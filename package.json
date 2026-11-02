@@ -1,0 +1,36 @@
+{
+  "name": "dhaaga-bazaar",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dhaaga Bazaar — India's B2B garment marketplace",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "setup": "npm install && npm run db:init && npm run prisma:deploy -w server && npm run seed -w server",
+    "dev": "node scripts/dev-db.mjs start && node scripts/dev.mjs",
+    "db:init": "node scripts/dev-db.mjs init",
+    "db:start": "node scripts/dev-db.mjs start",
+    "db:stop": "node scripts/dev-db.mjs stop",
+    "dev:server": "npm run dev -w server",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w server && npm run build -w client",
+    "test": "npm run test -w server && npm run test -w client",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w client",
+    "e2e:guest": "node scripts/e2e-guest-checkout.mjs e2e-shots",
+    "e2e:supplier": "node scripts/e2e-journeys.mjs e2e-shots",
+    "e2e:cleanup": "npm run cleanup:e2e -w server",
+    "e2e:journeys": "node scripts/e2e-journeys.mjs e2e-shots",
+    "db:backup": "node scripts/db-backup.mjs",
+    "db:restore": "node scripts/db-restore.mjs",
+    "images:audit": "node scripts/category-image-audit.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1"
+  }
+}

@@ -1,0 +1,678 @@
+// Dhaaga Bazaar — relational schema (PostgreSQL + Prisma)
+//
+// Money is stored as integer paise. Orders store price/title snapshots so a
+// confirmed order never changes when a supplier edits a listing later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────
+
+enum Role {
+  RETAILER
+  SUPPLIER
+  ADMIN
+}
+
+enum BusinessType {
+  RETAILER
+  BOUTIQUE_OWNER
+  RESELLER
+  WHOLESALER
+  MANUFACTURER
+  DISTRIBUTOR
+}
+
+enum SupplierStatus {
+  INCOMPLETE // registered, onboarding not submitted
+  PENDING_REVIEW // submitted, awaiting admin review
+  INFO_REQUESTED // admin asked for more information; supplier updates and resubmits
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum DocumentType {
+  GST_CERTIFICATE
+  PAN_CARD
+  UDYAM_CERTIFICATE
+  TRADE_LICENSE
+  CANCELLED_CHEQUE
+  OTHER
+}
+
+enum ReviewStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  ARCHIVED
+}
+
+enum Availability {
+  AVAILABLE
+  MADE_TO_ORDER
+  OUT_OF_STOCK
+}
+
+enum PriceUnit {
+  PIECE
+  SET
+  METRE
+  PAIR
+}
+
+enum ImageUsageRights {
+  SUPPLIER_OWNED
+  LICENSED
+  MANUFACTURER_PROVIDED
+}
+
+enum OrderStatus {
+  REQUESTED
+  PARTIALLY_CONFIRMED
+  CONFIRMED
+  IN_FULFILMENT
+  COMPLETED
+  CANCELLED
+}
+
+enum SupplierOrderStatus {
+  REQUESTED
+  CONFIRMED
+  REJECTED
+  PROCESSING
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ShipmentStatus {
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+enum CommissionStatus {
+  PENDING
+  INVOICED
+  PAID
+  WAIVED
+}
+
+enum EnquiryStatus {
+  OPEN
+  RESPONDED
+  CLOSED
+}
+
+enum ComplaintType {
+  QUALITY
+  DELIVERY
+  WRONG_ITEM
+  PAYMENT
+  OTHER
+}
+
+enum ComplaintStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+// ─── Identity ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         Role
+  businessType BusinessType?
+  isActive     Boolean      @default(true)
+  /// Incremented to invalidate all existing sessions (logout everywhere / password change).
+  tokenVersion Int          @default(0)
+  lastLoginAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  retailer      Retailer?
+  supplier      Supplier?
+  cart          Cart?
+  notifications Notification[]
+  auditLogs     AuditLog[]
+  resetTokens   PasswordResetToken[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model Retailer {
+  id           String       @id @default(cuid())
+  userId       String       @unique
+  businessName String
+  businessType BusinessType
+  gstin        String?
+  phone        String
+  city         String
+  state        String?
+  interests    String[]     @default([])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  addresses      Address[]
+  orders         Order[]
+  enquiries      Enquiry[]
+  complaints     Complaint[]
+  reviews        Review[]
+  savedProducts  SavedProduct[]
+  savedSuppliers SavedSupplier[]
+
+  @@map("retailers")
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  retailerId  String
+  label       String
+  contactName String
+  phone       String
+  line1       String
+  line2       String?
+  city        String
+  state       String
+  pincode     String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  retailer    Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+
+  @@index([retailerId])
+  @@map("addresses")
+}
+
+// ─── Suppliers ────────────────────────────────────────────────────────────
+
+model Supplier {
+  id              String         @id @default(cuid())
+  userId          String         @unique
+  businessName    String
+  businessType    BusinessType
+  contactName     String
+  phone           String
+  whatsapp        String?
+  gstin           String?
+  yearEstablished Int?
+  description     String?
+  addressLine     String?
+  city            String?
+  state           String?
+  pincode         String?
+  categoryPaths   String[]       @default([])
+  minOrderValuePaise Int?
+  status          SupplierStatus @default(INCOMPLETE)
+  /// Only ever set true by an admin after reviewing documents. Never automatic.
+  isVerified      Boolean        @default(false)
+  verifiedAt      DateTime?
+  rejectionReason String?
+  /// What the admin asked the supplier to add or correct (status INFO_REQUESTED).
+  infoRequest     String?
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  /// When the application was last approved (reviewedById records who approved it).
+  approvedAt      DateTime?
+  /// Development fixture flag — fixtures are never shown when NODE_ENV=production.
+  isFixture       Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents      SupplierDocument[]
+  products       Product[]
+  supplierOrders SupplierOrder[]
+  enquiries      Enquiry[]
+  savedBy        SavedSupplier[]
+  commissions    Commission[]
+  reviews        Review[]
+
+  @@index([status])
+  @@map("suppliers")
+}
+
+model SupplierDocument {
+  id           String       @id @default(cuid())
+  supplierId   String
+  type         DocumentType
+  storageKey   String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  status       ReviewStatus @default(PENDING)
+  reviewNote   String?
+  uploadedAt   DateTime     @default(now())
+  reviewedAt   DateTime?
+  supplier     Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([supplierId])
+  @@map("supplier_documents")
+}
+
+// ─── Catalogue ────────────────────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(cuid())
+  path        String     @unique
+  slug        String
+  name        String
+  title       String
+  description String
+  filterSet   String
+  keywords    String[]   @default([])
+  depth       Int
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Product {
+  id              String        @id @default(cuid())
+  supplierId      String
+  categoryId      String
+  title           String
+  slug            String
+  description     String
+  pricePaise      Int
+  priceUnit       PriceUnit     @default(PIECE)
+  piecesPerSet    Int?
+  moq             Int
+  orderStep       Int           @default(1)
+  leadTimeDays    Int?
+  /// Units available when the listing has no size/colour options. Null = stock not tracked (e.g. made to order).
+  stockQuantity   Int?
+  /// Optional volume pricing: [{ "minQty": 50, "pricePaise": 90000 }], ascending minQty, falling price.
+  priceTiers      Json          @default("[]")
+  /// Category-specific attributes, e.g. { "fabric": "Silk", "occasion": ["Wedding"] }
+  attributes      Json          @default("{}")
+  availability    Availability  @default(AVAILABLE)
+  status          ProductStatus @default(DRAFT)
+  rejectionReason String?
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  reviewedById    String?
+  isFixture       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  supplier  Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  category  Category         @relation(fields: [categoryId], references: [id])
+  variants  ProductVariant[]
+  images    ProductImage[]
+  cartItems CartItem[]
+  savedBy   SavedProduct[]
+  enquiries Enquiry[]
+  reviews   Review[]
+
+  @@index([status, categoryId])
+  @@index([supplierId])
+  @@map("products")
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  productId   String
+  size        String?
+  colour      String?
+  sku         String?
+  /// Optional per-variant price override (paise).
+  pricePaise  Int?
+  /// Units available for this option. Null = stock not tracked.
+  stockQuantity Int?
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems   CartItem[]
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model ProductImage {
+  id               String           @id @default(cuid())
+  productId        String
+  storageKey       String
+  url              String
+  originalFilename String
+  mimeType         String
+  sizeBytes        Int
+  width            Int?
+  height           Int?
+  altText          String?
+  sortOrder        Int              @default(0)
+  usageRights      ImageUsageRights
+  attribution      String?
+  status           ReviewStatus     @default(PENDING)
+  createdAt        DateTime         @default(now())
+  product          Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([storageKey])
+  @@map("product_images")
+}
+
+// ─── Cart ─────────────────────────────────────────────────────────────────
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  updatedAt DateTime   @updatedAt
+  createdAt DateTime   @default(now())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        String          @id @default(cuid())
+  cartId    String
+  productId String
+  variantId String?
+  quantity  Int
+  addedAt   DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  cart      Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+// ─── Orders & fulfilment ──────────────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  retailerId      String
+  status          OrderStatus @default(REQUESTED)
+  /// Snapshot of the delivery address at the time of ordering.
+  shippingAddress Json
+  notes           String?
+  subtotalPaise   Int
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  retailer       Retailer        @relation(fields: [retailerId], references: [id])
+  supplierOrders SupplierOrder[]
+  payments       Payment[]
+  complaints     Complaint[]
+
+  @@index([retailerId])
+  @@map("orders")
+}
+
+/// One order group per supplier — each supplier fulfils its own group.
+model SupplierOrder {
+  id            String              @id @default(cuid())
+  orderId       String
+  supplierId    String
+  status        SupplierOrderStatus @default(REQUESTED)
+  subtotalPaise Int
+  supplierNote  String?
+  confirmedAt   DateTime?
+  dispatchedAt  DateTime?
+  deliveredAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplier   Supplier    @relation(fields: [supplierId], references: [id])
+  items      OrderItem[]
+  shipments  Shipment[]
+  commission Commission?
+  payments   Payment[]
+  complaints Complaint[]
+  review     Review?
+
+  @@index([supplierId])
+  @@index([orderId])
+  @@map("supplier_orders")
+}
+
+model OrderItem {
+  id              String        @id @default(cuid())
+  supplierOrderId String
+  productId       String?
+  variantId       String?
+  // Snapshots — never recomputed from the live product.
+  productTitle    String
+  variantLabel    String?
+  unitPricePaise  Int
+  priceUnit       PriceUnit
+  moqAtOrder      Int
+  quantity        Int
+  lineTotalPaise  Int
+  supplierOrder   SupplierOrder @relation(fields: [supplierOrderId], references: [id], onDelete: Cascade)
+
+  @@index([supplierOrderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id              String         @id @default(cuid())
+  orderId         String
+  supplierOrderId String?
+  amountPaise     Int
+  method          String
+  status          PaymentStatus  @default(PENDING)
+  reference       String?
+  paidAt          DateTime?
+  createdAt       DateTime       @default(now())
+  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplierOrder   SupplierOrder? @relation(fields: [supplierOrderId], references: [id])
+
+  @@map("payments")
+}
+
+model Shipment {
+  id              String         @id @default(cuid())
+  supplierOrderId String
+  carrier         String
+  trackingNumber  String
+  trackingUrl     String?
+  status          ShipmentStatus @default(DISPATCHED)
+  notes           String?
+  dispatchedAt    DateTime       @default(now())
+  deliveredAt     DateTime?
+  supplierOrder   SupplierOrder  @relation(fields: [supplierOrderId], references: [id], onDelete: Cascade)
+
+  @@index([supplierOrderId])
+  @@map("shipments")
+}
+
+model Commission {
+  id              String           @id @default(cuid())
+  supplierOrderId String           @unique
+  supplierId      String
+  /// Commission rate in basis points (e.g. 500 = 5%).
+  rateBps         Int
+  amountPaise     Int
+  status          CommissionStatus @default(PENDING)
+  notes           String?
+  recordedById    String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  supplierOrder   SupplierOrder    @relation(fields: [supplierOrderId], references: [id], onDelete: Cascade)
+  supplier        Supplier         @relation(fields: [supplierId], references: [id])
+
+  @@map("commissions")
+}
+
+// ─── Engagement ───────────────────────────────────────────────────────────
+
+model Enquiry {
+  id               String        @id @default(cuid())
+  retailerId       String
+  supplierId       String
+  productId        String?
+  quantity         Int?
+  message          String
+  status           EnquiryStatus @default(OPEN)
+  supplierResponse String?
+  respondedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  retailer         Retailer      @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  supplier         Supplier      @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product          Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([retailerId])
+  @@index([supplierId])
+  @@map("enquiries")
+}
+
+/// Reviews are only permitted for delivered supplier orders and are moderated.
+model Review {
+  id              String         @id @default(cuid())
+  retailerId      String
+  supplierId      String
+  productId       String?
+  supplierOrderId String?        @unique
+  rating          Int
+  comment         String?
+  status          ReviewStatus   @default(PENDING)
+  createdAt       DateTime       @default(now())
+  retailer        Retailer       @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  supplier        Supplier       @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product         Product?       @relation(fields: [productId], references: [id], onDelete: SetNull)
+  supplierOrder   SupplierOrder? @relation(fields: [supplierOrderId], references: [id])
+
+  @@map("reviews")
+}
+
+model Complaint {
+  id              String          @id @default(cuid())
+  retailerId      String
+  orderId         String?
+  supplierOrderId String?
+  type            ComplaintType
+  subject         String
+  description     String
+  status          ComplaintStatus @default(OPEN)
+  resolution      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  resolvedAt      DateTime?
+  retailer        Retailer        @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  order           Order?          @relation(fields: [orderId], references: [id])
+  supplierOrder   SupplierOrder?  @relation(fields: [supplierOrderId], references: [id])
+
+  @@map("complaints")
+}
+
+model SavedProduct {
+  retailerId String
+  productId  String
+  createdAt  DateTime @default(now())
+  retailer   Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([retailerId, productId])
+  @@map("saved_products")
+}
+
+model SavedSupplier {
+  retailerId String
+  supplierId String
+  createdAt  DateTime @default(now())
+  retailer   Retailer @relation(fields: [retailerId], references: [id], onDelete: Cascade)
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@id([retailerId, supplierId])
+  @@map("saved_suppliers")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  topic     String
+  message   String
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}

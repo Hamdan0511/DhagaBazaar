@@ -1,0 +1,658 @@
+[
+ {
+  "key": "hero/hero-saree",
+  "src": "/images/hero/hero-saree.webp",
+  "alt": "Woman in a purple and gold silk saree with traditional jewellery",
+  "photographer": "Bella Pon Fruitsia",
+  "unsplashId": "wcgCFUi_Zws",
+  "url": "https://unsplash.com/photos/wcgCFUi_Zws",
+  "width": 2000,
+  "height": 1320,
+  "note": "Cropped to waist height; plain background wall extended to the right for the wide hero layout. Garment and model unaltered."
+ },
+ {
+  "key": "promo/sarees",
+  "src": "/images/promo/sarees.webp",
+  "alt": "Stacked silk sarees with gold zari borders",
+  "photographer": "vinay manda",
+  "unsplashId": "NQ0dtGvTZEQ",
+  "url": "https://unsplash.com/photos/NQ0dtGvTZEQ",
+  "width": 700,
+  "height": 1050
+ },
+ {
+  "key": "promo/kurtis",
+  "src": "/images/promo/kurtis.webp",
+  "alt": "Yellow embroidered kurti displayed on a mannequin",
+  "photographer": "Zayed Ahmed Zadu",
+  "unsplashId": "e_Ha_TxDlG0",
+  "url": "https://unsplash.com/photos/e_Ha_TxDlG0",
+  "width": 700,
+  "height": 1050
+ },
+ {
+  "key": "promo/dress-materials",
+  "src": "/images/promo/dress-materials.webp",
+  "alt": "Embroidered dress material fabrics with tassels",
+  "photographer": "Jainica Dhingra",
+  "unsplashId": "udCX1mvNFos",
+  "url": "https://unsplash.com/photos/udCX1mvNFos",
+  "width": 700,
+  "height": 394
+ },
+ {
+  "key": "categories/womens-wear",
+  "src": "/images/categories/womens-wear.webp",
+  "alt": "Woman in a pink and orange silk saree with gold jewellery",
+  "photographer": "Sabesh Photography LTD",
+  "unsplashId": "Xqa_NWl4xEY",
+  "url": "https://unsplash.com/photos/Xqa_NWl4xEY",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/mens-wear",
+  "src": "/images/categories/mens-wear.webp",
+  "alt": "Man wearing a light green printed kurta",
+  "photographer": "Firangi Yarn Menswear Brand",
+  "unsplashId": "hEuVOYuq1l4",
+  "url": "https://unsplash.com/photos/hEuVOYuq1l4",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/kids-wear",
+  "src": "/images/categories/kids-wear.webp",
+  "alt": "Young girl in a traditional silk pavadai holding a basket of flowers",
+  "photographer": "Jithin Murali",
+  "unsplashId": "hKXVxBO0g8o",
+  "url": "https://unsplash.com/photos/hKXVxBO0g8o",
+  "width": 900,
+  "height": 1241
+ },
+ {
+  "key": "categories/footwear",
+  "src": "/images/categories/footwear.webp",
+  "alt": "Pair of embroidered leather juttis",
+  "photographer": "Farhan Chohan",
+  "unsplashId": "n7wsqBt3zyw",
+  "url": "https://unsplash.com/photos/n7wsqBt3zyw",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/fabrics",
+  "src": "/images/categories/fabrics.webp",
+  "alt": "Shelves of colourful patterned fabric rolls",
+  "photographer": "Bernd Dittrich",
+  "unsplashId": "mAktH366U_k",
+  "url": "https://unsplash.com/photos/mAktH366U_k",
+  "width": 900,
+  "height": 692
+ },
+ {
+  "key": "categories/accessories",
+  "src": "/images/categories/accessories.webp",
+  "alt": "Brown leather tote handbag",
+  "photographer": "Ugluk Potroshitel",
+  "unsplashId": "XwjrPFW7xw0",
+  "url": "https://unsplash.com/photos/XwjrPFW7xw0",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/sarees",
+  "src": "/images/categories/sarees.webp",
+  "alt": "Woman in a red and gold silk saree",
+  "photographer": "shades by 43",
+  "unsplashId": "Rm9DL9DmGi4",
+  "url": "https://unsplash.com/photos/Rm9DL9DmGi4",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/sarees-alt",
+  "src": "/images/categories/sarees-alt.webp",
+  "alt": "Woman in a green silk saree with temple jewellery",
+  "photographer": "Sabesh Photography LTD",
+  "unsplashId": "njVir8eVq1M",
+  "url": "https://unsplash.com/photos/njVir8eVq1M",
+  "width": 900,
+  "height": 1349
+ },
+ {
+  "key": "categories/kurtis",
+  "src": "/images/categories/kurtis.webp",
+  "alt": "Navy printed kurti displayed on a mannequin",
+  "photographer": "Zayed Ahmed Zadu",
+  "unsplashId": "dYMt4ug7Vxs",
+  "url": "https://unsplash.com/photos/dYMt4ug7Vxs",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/kurtas",
+  "src": "/images/categories/kurtas.webp",
+  "alt": "Woman in a white floral block-print kurta set",
+  "photographer": "Shahenaz India",
+  "unsplashId": "Yci8aYzkjpk",
+  "url": "https://unsplash.com/photos/Yci8aYzkjpk",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/salwar-suits",
+  "src": "/images/categories/salwar-suits.webp",
+  "alt": "Woman in a pink salwar suit with dupatta",
+  "photographer": "Raju Kumar",
+  "unsplashId": "CsxY5SwS_kU",
+  "url": "https://unsplash.com/photos/CsxY5SwS_kU",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/dupattas",
+  "src": "/images/categories/dupattas.webp",
+  "alt": "Woman wearing a long embroidered dupatta",
+  "photographer": "Muneeb Malhotra",
+  "unsplashId": "Nddrrg2_GhI",
+  "url": "https://unsplash.com/photos/Nddrrg2_GhI",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/lehengas",
+  "src": "/images/categories/lehengas.webp",
+  "alt": "Woman in an ornate yellow and maroon lehenga with dupatta",
+  "photographer": "Morni Saree",
+  "unsplashId": "unFmQCqV8Ow",
+  "url": "https://unsplash.com/photos/unFmQCqV8Ow",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/gowns",
+  "src": "/images/categories/gowns.webp",
+  "alt": "Woman in a golden gown with floral embroidery",
+  "photographer": "iKshana Productions",
+  "unsplashId": "jrsWp9tDvlo",
+  "url": "https://unsplash.com/photos/jrsWp9tDvlo",
+  "width": 900,
+  "height": 1446
+ },
+ {
+  "key": "categories/western-wear",
+  "src": "/images/categories/western-wear.webp",
+  "alt": "Terracotta button-down dress with tie waist",
+  "photographer": "engin akyurt",
+  "unsplashId": "6_LidIGnJqU",
+  "url": "https://unsplash.com/photos/6_LidIGnJqU",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/tops",
+  "src": "/images/categories/tops.webp",
+  "alt": "Patterned blouses and tops on a clothing rack",
+  "photographer": "Aviv Rachmadian",
+  "unsplashId": "7F7kEHj72MQ",
+  "url": "https://unsplash.com/photos/7F7kEHj72MQ",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/dresses",
+  "src": "/images/categories/dresses.webp",
+  "alt": "Mustard sleeveless shirt dress",
+  "photographer": "engin akyurt",
+  "unsplashId": "oj5vw4vMGl8",
+  "url": "https://unsplash.com/photos/oj5vw4vMGl8",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/blouses",
+  "src": "/images/categories/blouses.webp",
+  "alt": "Red saree blouse with tie-back detail",
+  "photographer": "Uday Ahir",
+  "unsplashId": "WrXaoNATegk",
+  "url": "https://unsplash.com/photos/WrXaoNATegk",
+  "width": 900,
+  "height": 1200
+ },
+ {
+  "key": "categories/co-ord-sets",
+  "src": "/images/categories/co-ord-sets.webp",
+  "alt": "Woman in a pink floral co-ord set",
+  "photographer": "IMANA",
+  "unsplashId": "_Efxb183CbM",
+  "url": "https://unsplash.com/photos/_Efxb183CbM",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/ethnic-sets",
+  "src": "/images/categories/ethnic-sets.webp",
+  "alt": "Woman in a pink floral kurta and pants set",
+  "photographer": "Shahenaz India",
+  "unsplashId": "kN3tHdXDDrs",
+  "url": "https://unsplash.com/photos/kN3tHdXDDrs",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/palazzos",
+  "src": "/images/categories/palazzos.webp",
+  "alt": "Woman in a printed kurta with palazzo pants",
+  "photographer": "IMANA",
+  "unsplashId": "ZkPhuIDswMw",
+  "url": "https://unsplash.com/photos/ZkPhuIDswMw",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/mens-shirts",
+  "src": "/images/categories/mens-shirts.webp",
+  "alt": "Folded checked cotton shirts",
+  "photographer": "farhad chaudhary",
+  "unsplashId": "BIX4J-w2nRI",
+  "url": "https://unsplash.com/photos/BIX4J-w2nRI",
+  "width": 900,
+  "height": 1349
+ },
+ {
+  "key": "categories/mens-t-shirts",
+  "src": "/images/categories/mens-t-shirts.webp",
+  "alt": "Folded plain t-shirts in assorted colours",
+  "photographer": "Md Salman",
+  "unsplashId": "tWOz2_EK5EQ",
+  "url": "https://unsplash.com/photos/tWOz2_EK5EQ",
+  "width": 900,
+  "height": 1600
+ },
+ {
+  "key": "categories/mens-formal-wear",
+  "src": "/images/categories/mens-formal-wear.webp",
+  "alt": "Man in a navy blue suit",
+  "photographer": "Mohamad Khosravi",
+  "unsplashId": "HgyAIYvMWkw",
+  "url": "https://unsplash.com/photos/HgyAIYvMWkw",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/mens-casual-wear",
+  "src": "/images/categories/mens-casual-wear.webp",
+  "alt": "Young man in a patterned shirt and grey trousers",
+  "photographer": "Deepak Singh",
+  "unsplashId": "UCtchpzShf0",
+  "url": "https://unsplash.com/photos/UCtchpzShf0",
+  "width": 900,
+  "height": 1600
+ },
+ {
+  "key": "categories/mens-jeans",
+  "src": "/images/categories/mens-jeans.webp",
+  "alt": "Stacks of folded denim jeans",
+  "photographer": "Waldemar Brandt",
+  "unsplashId": "UP9DtTjRYpI",
+  "url": "https://unsplash.com/photos/UP9DtTjRYpI",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/mens-trousers",
+  "src": "/images/categories/mens-trousers.webp",
+  "alt": "Man in a white shirt and grey trousers",
+  "photographer": "Marius Muresan",
+  "unsplashId": "I9HbOBaaWs8",
+  "url": "https://unsplash.com/photos/I9HbOBaaWs8",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/mens-ethnic-wear",
+  "src": "/images/categories/mens-ethnic-wear.webp",
+  "alt": "Man in a blue kurta pyjama set",
+  "photographer": "Noor Alam",
+  "unsplashId": "sLRFg-VC2FY",
+  "url": "https://unsplash.com/photos/sLRFg-VC2FY",
+  "width": 900,
+  "height": 1260
+ },
+ {
+  "key": "categories/mens-kurtas",
+  "src": "/images/categories/mens-kurtas.webp",
+  "alt": "Man in a pale yellow kurta",
+  "photographer": "Abhishek Rai",
+  "unsplashId": "J-WjiWJnsdE",
+  "url": "https://unsplash.com/photos/J-WjiWJnsdE",
+  "width": 900,
+  "height": 720
+ },
+ {
+  "key": "categories/mens-sherwanis",
+  "src": "/images/categories/mens-sherwanis.webp",
+  "alt": "White embroidered sherwani with red safa and stole",
+  "photographer": "Royal Photography",
+  "unsplashId": "dF3nzZ8ZZK4",
+  "url": "https://unsplash.com/photos/dF3nzZ8ZZK4",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/girls-clothing",
+  "src": "/images/categories/girls-clothing.webp",
+  "alt": "Young girl in a blue tulle party dress",
+  "photographer": "Modupe Falade",
+  "unsplashId": "BayzMQkraW4",
+  "url": "https://unsplash.com/photos/BayzMQkraW4",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/boys-clothing",
+  "src": "/images/categories/boys-clothing.webp",
+  "alt": "Young boy in a cardigan, shirt and blue shorts",
+  "photographer": "Terricks Noah",
+  "unsplashId": "n9R0MN3XGvY",
+  "url": "https://unsplash.com/photos/n9R0MN3XGvY",
+  "width": 900,
+  "height": 1739
+ },
+ {
+  "key": "categories/baby-clothing",
+  "src": "/images/categories/baby-clothing.webp",
+  "alt": "Baby clothes hanging on a rack",
+  "photographer": "jackson kondili",
+  "unsplashId": "x5VhI538fII",
+  "url": "https://unsplash.com/photos/x5VhI538fII",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/kids-ethnic-wear",
+  "src": "/images/categories/kids-ethnic-wear.webp",
+  "alt": "Two young girls in traditional Indian clothing",
+  "photographer": "Joydeep Sensarma",
+  "unsplashId": "8wFt5tBHRHQ",
+  "url": "https://unsplash.com/photos/8wFt5tBHRHQ",
+  "width": 900,
+  "height": 598
+ },
+ {
+  "key": "categories/kids-western-wear",
+  "src": "/images/categories/kids-western-wear.webp",
+  "alt": "Children's clothing displayed in a store",
+  "photographer": "Zayed Ahmed Zadu",
+  "unsplashId": "COgVvJ_CG_I",
+  "url": "https://unsplash.com/photos/COgVvJ_CG_I",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/school-uniforms",
+  "src": "/images/categories/school-uniforms.webp",
+  "alt": "Schoolgirl in uniform with classmates",
+  "photographer": "Raj Rana",
+  "unsplashId": "nWpTGnP_jWE",
+  "url": "https://unsplash.com/photos/nWpTGnP_jWE",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/womens-footwear",
+  "src": "/images/categories/womens-footwear.webp",
+  "alt": "Embellished open-toe sandals",
+  "photographer": "Shahzad Faisal",
+  "unsplashId": "DfQSEG0N_tw",
+  "url": "https://unsplash.com/photos/DfQSEG0N_tw",
+  "width": 900,
+  "height": 1348
+ },
+ {
+  "key": "categories/mens-footwear",
+  "src": "/images/categories/mens-footwear.webp",
+  "alt": "Brown leather lace-up brogues",
+  "photographer": "Monaal Garg",
+  "unsplashId": "99NxpMVxWDA",
+  "url": "https://unsplash.com/photos/99NxpMVxWDA",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/sandals",
+  "src": "/images/categories/sandals.webp",
+  "alt": "Black and brown leather sandals",
+  "photographer": "Kushagrta Roy",
+  "unsplashId": "-JM9hYDw8iY",
+  "url": "https://unsplash.com/photos/-JM9hYDw8iY",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/slippers",
+  "src": "/images/categories/slippers.webp",
+  "alt": "Rows of decorative slippers on shelves",
+  "photographer": "WyteShot",
+  "unsplashId": "JvKNI7yHbz0",
+  "url": "https://unsplash.com/photos/JvKNI7yHbz0",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/casual-shoes",
+  "src": "/images/categories/casual-shoes.webp",
+  "alt": "White sneakers",
+  "photographer": "Sanju Pandita",
+  "unsplashId": "36MiHf2KKr8",
+  "url": "https://unsplash.com/photos/36MiHf2KKr8",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/formal-shoes",
+  "src": "/images/categories/formal-shoes.webp",
+  "alt": "Brown leather formal shoes",
+  "photographer": "rupixen",
+  "unsplashId": "OSG5rYIWod0",
+  "url": "https://unsplash.com/photos/OSG5rYIWod0",
+  "width": 900,
+  "height": 594
+ },
+ {
+  "key": "categories/sports-shoes",
+  "src": "/images/categories/sports-shoes.webp",
+  "alt": "Athletic sports shoes",
+  "photographer": "Irene Kredenets",
+  "unsplashId": "dwKiHoqqxk8",
+  "url": "https://unsplash.com/photos/dwKiHoqqxk8",
+  "width": 900,
+  "height": 1125
+ },
+ {
+  "key": "categories/ethnic-footwear",
+  "src": "/images/categories/ethnic-footwear.webp",
+  "alt": "Red embroidered juttis with gold accents",
+  "photographer": "Farhan Chohan",
+  "unsplashId": "R87ATkTJH9k",
+  "url": "https://unsplash.com/photos/R87ATkTJH9k",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/cotton-fabrics",
+  "src": "/images/categories/cotton-fabrics.webp",
+  "alt": "Stacks of folded red and orange fabric",
+  "photographer": "Declan Sun",
+  "unsplashId": "Tvty2q_0Qwc",
+  "url": "https://unsplash.com/photos/Tvty2q_0Qwc",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/silk-fabrics",
+  "src": "/images/categories/silk-fabrics.webp",
+  "alt": "Teal silk fabric close-up",
+  "photographer": "Jatin Gajjar",
+  "unsplashId": "dQO-3ud96rQ",
+  "url": "https://unsplash.com/photos/dQO-3ud96rQ",
+  "width": 900,
+  "height": 506
+ },
+ {
+  "key": "categories/printed-fabrics",
+  "src": "/images/categories/printed-fabrics.webp",
+  "alt": "Hanging strips of printed fabrics",
+  "photographer": "Richard Williams",
+  "unsplashId": "JeYmWAQduzs",
+  "url": "https://unsplash.com/photos/JeYmWAQduzs",
+  "width": 900,
+  "height": 676
+ },
+ {
+  "key": "categories/embroidered-fabrics",
+  "src": "/images/categories/embroidered-fabrics.webp",
+  "alt": "Fabrics with intricate floral embroidery",
+  "photographer": "Richard Williams",
+  "unsplashId": "xLQEPpuonWY",
+  "url": "https://unsplash.com/photos/xLQEPpuonWY",
+  "width": 900,
+  "height": 675
+ },
+ {
+  "key": "categories/textile-accessories",
+  "src": "/images/categories/textile-accessories.webp",
+  "alt": "Rows of thread spools in many colours",
+  "photographer": "Vishal Banik",
+  "unsplashId": "V6T99SnUCyA",
+  "url": "https://unsplash.com/photos/V6T99SnUCyA",
+  "width": 900,
+  "height": 1350
+ },
+ {
+  "key": "categories/bags",
+  "src": "/images/categories/bags.webp",
+  "alt": "Brown leather satchel bag",
+  "photographer": "Alvaro Serrano",
+  "unsplashId": "pFLNV4gkXsc",
+  "url": "https://unsplash.com/photos/pFLNV4gkXsc",
+  "width": 900,
+  "height": 536
+ },
+ {
+  "key": "categories/belts",
+  "src": "/images/categories/belts.webp",
+  "alt": "Brown braided leather belts",
+  "photographer": "saeed karimi",
+  "unsplashId": "rH16wMV8ImM",
+  "url": "https://unsplash.com/photos/rH16wMV8ImM",
+  "width": 900,
+  "height": 1125
+ },
+ {
+  "key": "categories/scarves",
+  "src": "/images/categories/scarves.webp",
+  "alt": "Multi-coloured printed scarves",
+  "photographer": "Siora Photography",
+  "unsplashId": "AbTqvT8_jw0",
+  "url": "https://unsplash.com/photos/AbTqvT8_jw0",
+  "width": 900,
+  "height": 600
+ },
+ {
+  "key": "categories/stoles",
+  "src": "/images/categories/stoles.webp",
+  "alt": "Colourful stoles hanging on a rack",
+  "photographer": "Bernd Dittrich",
+  "unsplashId": "KMWZux5hRt8",
+  "url": "https://unsplash.com/photos/KMWZux5hRt8",
+  "width": 900,
+  "height": 1373
+ },
+ {
+  "key": "categories/fashion-accessories",
+  "src": "/images/categories/fashion-accessories.webp",
+  "alt": "Gold and silver beaded bracelets",
+  "photographer": "Urvi Kotasthane",
+  "unsplashId": "gl-KSnRyhE0",
+  "url": "https://unsplash.com/photos/gl-KSnRyhE0",
+  "width": 900,
+  "height": 675
+ },
+ {
+  "key": "sections/weaving",
+  "src": "/images/sections/weaving.webp",
+  "alt": "Weaver working on a wooden handloom",
+  "photographer": "Apekshit Srivastava",
+  "unsplashId": "BaoQqcXusxE",
+  "url": "https://unsplash.com/photos/BaoQqcXusxE",
+  "width": 1400,
+  "height": 788
+ },
+ {
+  "key": "sections/textile-market",
+  "src": "/images/sections/textile-market.webp",
+  "alt": "Colourful patterned textiles stacked for sale",
+  "photographer": "Sounak Mukherjee",
+  "unsplashId": "bsxCeDUuprM",
+  "url": "https://unsplash.com/photos/bsxCeDUuprM",
+  "width": 1400,
+  "height": 1867
+ },
+ {
+  "key": "categories/designer-sarees",
+  "src": "/images/categories/designer-sarees.webp",
+  "alt": "Woman in an embroidered white saree with a red blouse",
+  "photographer": "Uday Ahir",
+  "unsplashId": "Rg8DFCGz-jg",
+  "url": "https://unsplash.com/photos/Rg8DFCGz-jg",
+  "width": 420,
+  "height": 560,
+  "note": "Unsplash License (free), verified on the photo page 2026-11-02. Source is a 420px preview downloaded during the original image selection; replace with a full-resolution download when official API access is available."
+ },
+ {
+  "key": "categories/printed-sarees",
+  "src": "/images/categories/printed-sarees.webp",
+  "alt": "Woman in a colourful printed saree",
+  "photographer": "Horitoki Ltd",
+  "unsplashId": "dCuCMZ9XnHg",
+  "url": "https://unsplash.com/photos/dCuCMZ9XnHg",
+  "width": 420,
+  "height": 630,
+  "note": "Unsplash License (free), verified on the photo page 2026-11-02. Source is a 420px preview downloaded during the original image selection; replace with a full-resolution download when official API access is available."
+ },
+ {
+  "key": "categories/cotton-sarees",
+  "src": "/images/categories/cotton-sarees.webp",
+  "alt": "Woman in a white saree with a red border",
+  "photographer": "Tanmay Abhay Mahajan",
+  "unsplashId": "dDvGi7doUpA",
+  "url": "https://unsplash.com/photos/dDvGi7doUpA",
+  "width": 420,
+  "height": 630,
+  "note": "Unsplash License (free), verified on the photo page 2026-11-02. Source is a 420px preview downloaded during the original image selection; replace with a full-resolution download when official API access is available."
+ },
+ {
+  "key": "categories/polo-t-shirts",
+  "src": "/images/categories/polo-t-shirts.webp",
+  "alt": "Folded polo shirts in assorted colours, flat lay",
+  "photographer": "Lena Kudryavtseva",
+  "unsplashId": "itUsEU7GgDU",
+  "url": "https://unsplash.com/photos/itUsEU7GgDU",
+  "width": 420,
+  "height": 280,
+  "note": "Unsplash License (free), verified on the photo page 2026-11-02. Source is a 420px preview downloaded during the original image selection; replace with a full-resolution download when official API access is available."
+ },
+ {
+  "key": "categories/kids-t-shirts",
+  "src": "/images/categories/kids-t-shirts.webp",
+  "alt": "Small white children's t-shirt, flat lay",
+  "photographer": "Mediamodifier",
+  "unsplashId": "tzX4q7oJlxc",
+  "url": "https://unsplash.com/photos/tzX4q7oJlxc",
+  "width": 420,
+  "height": 316,
+  "note": "Unsplash License (free), verified on the photo page 2026-11-02. Source is a 420px preview downloaded during the original image selection; replace with a full-resolution download when official API access is available."
+ }
+]
