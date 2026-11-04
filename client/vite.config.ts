@@ -14,6 +14,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Docker dev (docker-compose.dev.yml): file events from a host bind mount are unreliable on
+    // Windows/macOS, so poll instead. Native development keeps normal file watching.
+    watch: process.env.CHOKIDAR_USEPOLLING === 'true' ? { usePolling: true, interval: 300 } : undefined,
     // A fresh upstream connection per request: Node's default keep-alive agent can return a
     // socket to the pool after the browser aborts a large response (e.g. navigating away while a
     // photo downloads), and later requests sent on that socket hang. Dev-only — production

@@ -12,8 +12,24 @@ export const notFoundHandler: RequestHandler = (req, res) => {
 const send = (res: Parameters<ErrorRequestHandler>[2], status: number, code: string, message: string, details?: unknown) =>
   res.status(status).json({ error: { code, message, details } });
 
+// Prisma codes meaning the database could not be reached (down, timed out, connection dropped, pool exhausted).
+const DB_UNAVAILABLE_CODES = new Set(['P1001', 'P1002', 'P1008', 'P1017', 'P2024']);
+
+export function isDatabaseUnavailable(err: unknown) {
+  return (
+    err instanceof Prisma.PrismaClientInitializationError ||
+    (err instanceof Prisma.PrismaClientKnownRequestError && DB_UNAVAILABLE_CODES.has(err.code))
+  );
+}
+
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof HttpError) return send(res, err.status, err.code ?? 'ERROR', err.message, err.details);
+
+  // An outage is not the user's fault and not a bug in the request: say so, and keep the cause in the log only.
+  if (isDatabaseUnavailable(err)) {
+    log('error', 'database unavailable', { id: req.id, method: req.method, path: req.path, error: err?.message });
+    return send(res, 503, 'SERVICE_UNAVAILABLE', `Dhaaga Bazaar is temporarily unavailable. Please try again in a few minutes. (Reference: ${req.id ?? 'n/a'})`);
+  }
 
   if (err instanceof multer.MulterError) {
     const message = err.code === 'LIMIT_FILE_SIZE' ? `File is too large (max ${Math.round(config.maxUploadBytes / 1048576)} MB).` : err.message;

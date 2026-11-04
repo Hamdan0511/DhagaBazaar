@@ -418,7 +418,7 @@ export function ProductEditor({ supplierApproved, supplierName }: { supplierAppr
             </dl>
             <p className="mt-3 text-xs text-muted">Listings always belong to your own supplier account. They go live only after our team approves them.</p>
           </Panel>
-          {isNew && <Alert tone="info">Create the draft first — you can then take or upload photos and submit it for review.</Alert>}
+          {isNew && <Alert tone="info">Create the draft first — you can then take photos with your camera, upload from your gallery, enhance them with Dhaaga Bazaar AI and submit the listing for review.</Alert>}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" loading={save.isPending}>{isNew ? 'Create draft' : 'Save changes'}</Button>
             <Link to="/supplier/products" className="inline-flex h-11 items-center px-3 text-sm text-muted hover:text-charcoal">Cancel</Link>

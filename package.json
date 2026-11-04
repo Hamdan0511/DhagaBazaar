@@ -14,7 +14,7 @@
     "db:init": "node scripts/dev-db.mjs init",
     "db:start": "node scripts/dev-db.mjs start",
     "db:stop": "node scripts/dev-db.mjs stop",
-    "dev:server": "npm run dev -w server",
+    "dev:server": "node scripts/dev-db.mjs start && npm run dev -w server",
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w server && npm run build -w client",
     "test": "npm run test -w server && npm run test -w client",
@@ -25,7 +25,19 @@
     "e2e:journeys": "node scripts/e2e-journeys.mjs e2e-shots",
     "db:backup": "node scripts/db-backup.mjs",
     "db:restore": "node scripts/db-restore.mjs",
-    "images:audit": "node scripts/category-image-audit.mjs"
+    "images:audit": "node scripts/category-image-audit.mjs",
+    "docker:build": "docker compose --env-file .env.docker --profile tools build",
+    "docker:migrate": "docker compose --env-file .env.docker run --rm migrate",
+    "docker:seed": "docker compose --env-file .env.docker run --rm migrate npx tsx prisma/seed.ts",
+    "docker:up": "docker compose --env-file .env.docker up -d",
+    "docker:down": "docker compose --env-file .env.docker down",
+    "docker:restart": "docker compose --env-file .env.docker restart",
+    "docker:ps": "docker compose --env-file .env.docker ps",
+    "docker:logs": "docker compose --env-file .env.docker logs -f --tail=200",
+    "docker:backup": "node scripts/docker-db.mjs backup",
+    "docker:restore": "node scripts/docker-db.mjs restore",
+    "docker:dev": "docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.dev.yml up --build",
+    "docker:dev:down": "docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.dev.yml down"
   },
   "engines": {
     "node": ">=20"

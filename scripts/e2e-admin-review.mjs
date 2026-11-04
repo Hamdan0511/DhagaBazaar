@@ -104,6 +104,9 @@ try {
   await p.goto(`${base}/supplier/onboarding`, { waitUntil: 'networkidle' });
   await p.getByLabel('Document type').selectOption('GST_CERTIFICATE');
   await p.locator('input[accept="application/pdf,image/jpeg,image/png"]').setInputFiles(pdfPath);
+  // The document is previewed first and only uploaded on "Submit document".
+  await p.getByLabel('Document ready to submit').getByText('PDF ·').first().waitFor();
+  await p.getByRole('button', { name: 'Submit document' }).click();
   await p.getByText('Document uploaded').first().waitFor();
   const docId = (await (await api(p, 'get', '/supplier/me')).json()).supplier.documents[0].id;
   ok('supplier registered (pending review) and uploaded a GST certificate');

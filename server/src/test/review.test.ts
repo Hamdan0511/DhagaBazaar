@@ -133,7 +133,7 @@ describe('product photos and volume pricing', () => {
     await approvedSupplier(a, admin);
     const p = await a.post('/api/supplier/products').set(H).send({ title: 'Photo order listing', description: 'Listing used to test photo ordering.', categoryPath: 'accessories/belts', price: 100, priceUnit: 'PIECE', moq: 1 });
     const id = p.body.product.id as string;
-    const up = await a.post(`/api/supplier/products/${id}/images`).set(H).field('usageRights', 'SUPPLIER_OWNED').attach('images', JPEG, '1.jpg').attach('images', JPEG, '2.jpg');
+    const up = await a.post(`/api/supplier/products/${id}/images`).set(H).field('usageRights', 'SUPPLIER_OWNED').attach('images', JPEG, '1.jpg').attach('images', Buffer.concat([JPEG, Buffer.from('second')]), '2.jpg'); // two different photos (identical files are refused)
     expect(up.status).toBe(201);
     const [first, second] = up.body.images.map((i: { id: string }) => i.id);
     expect((await a.put(`/api/supplier/products/${id}/images/order`).set(H).send({ imageIds: [second, first] })).status).toBe(200);

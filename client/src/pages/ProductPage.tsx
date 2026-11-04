@@ -216,6 +216,7 @@ export default function ProductPage() {
             </ul>
           )}
           {images[activeImage]?.attribution && <p className="mt-2 text-xs text-muted">Photo: {images[activeImage].attribution}</p>}
+          {images[activeImage]?.aiEnhanced && <p className="mt-2 text-xs text-muted">This photo of the supplier's product was enhanced with Dhaaga Bazaar AI (background, lighting and creases). The supplier confirmed it shows the actual item.</p>}
         </div>
 
         {/* Purchase panel */}

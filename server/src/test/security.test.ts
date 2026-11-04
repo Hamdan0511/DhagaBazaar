@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import { Prisma } from '@prisma/client';
 import { createApp } from '../app.js';
 import { prisma } from '../lib/prisma.js';
 import { H, JPEG, addAddress, approvedSupplier, publishedProduct, registerRetailer, uid, type Agent } from './helpers.js';
@@ -256,5 +257,21 @@ describe('order integrity', () => {
     expect(edit.status).toBe(200);
     expect(edit.body.product.variants.map((v: { id: string }) => v.id)).toEqual(expect.arrayContaining(product.variants.map((v: { id: string }) => v.id)));
     expect((await r.get('/api/cart')).body.itemCount).toBe(1);
+  });
+});
+
+describe('database outage', () => {
+  it('answers sign-in with a clear 503, not a generic 500, and leaks no connection details', async () => {
+    const outage = new Prisma.PrismaClientInitializationError("Can't reach database server at `127.0.0.1:5433`", Prisma.prismaVersion.client);
+    const spy = vi.spyOn(prisma.user, 'findUnique').mockRejectedValueOnce(outage);
+    try {
+      const r = await request(app).post('/api/auth/login').set(H).send({ email: 'shop@retailer.test', password: 'whatever-pass-1' });
+      expect(r.status).toBe(503);
+      expect(r.body.error.code).toBe('SERVICE_UNAVAILABLE');
+      expect(r.body.error.message).toMatch(/temporarily unavailable.*Reference: /);
+      expect(JSON.stringify(r.body)).not.toMatch(/5433|127\.0\.0\.1|postgres/i);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

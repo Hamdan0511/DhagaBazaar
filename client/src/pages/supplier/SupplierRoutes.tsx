@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Boxes, Settings, Bell, Building2, ClipboardList, FileUp, LayoutDashboard, MessagesSquare, Package, Plus, ShieldCheck, Trash2, Truck } from 'lucide-react';
+import { Boxes, Camera, Settings, Bell, Building2, ClipboardList, FileUp, LayoutDashboard, MessagesSquare, Package, Plus, ShieldCheck, Sparkles, Trash2, Truck, X } from 'lucide-react';
 import { SUPPLIER_DOCUMENT_TYPES, SUPPLIER_STATUS_LABELS, dispatchSchema, formatINR, formatNumber, PRICE_UNIT_SHORT } from '@dhaaga/shared';
 import { api, errorMessage } from '@/lib/api';
 import { DashboardLayout, NotificationsView, PageHeader, Panel, StatCard, useUnreadCount, type NavItem } from '@/components/dashboard/DashboardLayout';
@@ -15,6 +15,9 @@ import { formatDate, titleCase } from '@/lib/utils';
 import { toast } from '@/stores/ui';
 import { SupplierProfileForm, type SupplierRecord } from './SupplierProfileForm';
 import { ProductEditor } from './ProductEditor';
+import { AiStudioPage } from './AiStudio';
+import { CameraCapture } from '@/components/media/CameraCapture';
+import { liveCameraSupported } from '@/lib/photos';
 import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { cn } from '@/lib/utils';
 import { PLACEHOLDER_IMAGE } from '@/lib/images';
@@ -113,7 +116,19 @@ function StatusBanner({ s, showActions = true }: { s: SupplierRecord; showAction
 function Documents({ s }: { s: SupplierRecord }) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
+  const captureInput = useRef<HTMLInputElement>(null);
   const [type, setType] = useState('GST_CERTIFICATE');
+  const [camera, setCamera] = useState(false);
+  // The chosen/captured document waits here for a preview before it is submitted.
+  const [pending, setPending] = useState<{ file: File; preview: string | null; source: 'camera' | 'device' } | null>(null);
+  const choose = (file: File, source: 'camera' | 'device') => {
+    if (pending?.preview) URL.revokeObjectURL(pending.preview);
+    setPending({ file, source, preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : null });
+  };
+  const clearPending = () => {
+    if (pending?.preview) URL.revokeObjectURL(pending.preview);
+    setPending(null);
+  };
   const upload = useMutation({
     mutationFn: (file: File) => {
       const fd = new FormData();
@@ -123,6 +138,7 @@ function Documents({ s }: { s: SupplierRecord }) {
     },
     onSuccess: () => {
       toast({ tone: 'success', title: 'Document uploaded' });
+      clearPending();
       void qc.invalidateQueries({ queryKey: ['supplier', 'me'] });
     },
     onError: (e) => toast({ tone: 'error', title: 'Upload failed', description: errorMessage(e) }),
@@ -154,11 +170,80 @@ function Documents({ s }: { s: SupplierRecord }) {
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
         </Select>
-        <input ref={input} type="file" accept="application/pdf,image/jpeg,image/png" className="hidden" onChange={(e) => e.target.files?.[0] && upload.mutate(e.target.files[0])} />
-        <Button variant="subtle" icon={<FileUp className="size-4" />} loading={upload.isPending} onClick={() => input.current?.click()}>
-          Upload document
+        <input
+          ref={input}
+          type="file"
+          accept="application/pdf,image/jpeg,image/png"
+          className="hidden"
+          data-testid="document-file-input"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f) choose(f, 'device');
+          }}
+        />
+        <input
+          ref={captureInput}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          data-testid="document-capture-input"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (f) choose(f, 'camera');
+          }}
+        />
+        <Button variant="subtle" icon={<Camera className="size-4" />} onClick={() => (liveCameraSupported() ? setCamera(true) : captureInput.current?.click())} disabled={upload.isPending}>
+          Take Photo of Document
+        </Button>
+        <Button variant="subtle" icon={<FileUp className="size-4" />} onClick={() => input.current?.click()} disabled={upload.isPending}>
+          Upload Document from Device
         </Button>
       </div>
+      {pending && (
+        <div className="mt-4 rounded-lg border border-line bg-ivory-light p-3" aria-label="Document ready to submit">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {pending.preview ? (
+              <img src={pending.preview} alt="Document preview" className="max-h-72 w-full rounded border border-line bg-white object-contain sm:w-64" />
+            ) : (
+              <div className="flex h-24 w-full items-center justify-center rounded border border-line bg-white text-sm text-muted sm:w-64">PDF · {pending.file.name}</div>
+            )}
+            <div className="flex-1 text-sm">
+              <p className="font-medium">{SUPPLIER_DOCUMENT_TYPES.find((t) => t.value === type)?.label}</p>
+              <p className="text-muted">
+                {pending.file.name} · {(pending.file.size / 1024 / 1024).toFixed(1)} MB
+              </p>
+              <p className="mt-1 text-xs text-muted">Check that every word, number, seal and signature is readable. Documents are stored privately and are never edited or sent to AI.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button size="sm" icon={<FileUp className="size-4" />} loading={upload.isPending} onClick={() => upload.mutate(pending.file)}>
+                  Submit document
+                </Button>
+                <Button size="sm" variant="subtle" onClick={() => (pending.source === 'camera' && liveCameraSupported() ? setCamera(true) : pending.source === 'camera' ? captureInput.current?.click() : input.current?.click())} disabled={upload.isPending}>
+                  {pending.source === 'camera' ? 'Retake' : 'Replace'}
+                </Button>
+                <Button size="sm" variant="ghost" icon={<X className="size-4" />} onClick={clearPending} disabled={upload.isPending}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <CameraCapture
+        open={camera}
+        onClose={() => setCamera(false)}
+        title="Photograph document"
+        tip="Place the document flat in good light, fill the frame and keep it sharp. Make sure all text, the GSTIN and any seal or signature are readable."
+        allowMultiple={false}
+        onUseNativeCamera={() => captureInput.current?.click()}
+        onCapture={async (blob) => {
+          if (blob.size > 8 * 1024 * 1024) return 'This photo is larger than 8 MB. Move a little further away and retake it.';
+          choose(new File([blob], `document-${Date.now()}.jpg`, { type: 'image/jpeg' }), 'camera');
+          return null;
+        }}
+      />
     </Panel>
   );
 }
@@ -586,6 +671,7 @@ export default function SupplierRoutes() {
     { to: '/supplier/onboarding', label: 'Verification documents', icon: ShieldCheck },
     { to: '/supplier/products', label: 'Products', icon: Package },
     { to: '/supplier/products/new', label: 'Add new product', icon: Plus, end: true },
+    { to: '/supplier/ai-studio', label: 'Dhaaga Bazaar AI Studio', icon: Sparkles },
     { to: '/supplier/inventory', label: 'Stock management', icon: Boxes },
     { to: '/supplier/enquiries', label: 'Enquiries', icon: MessagesSquare },
     { to: '/supplier/orders', label: 'Orders & dispatch', icon: Truck },
@@ -600,6 +686,7 @@ export default function SupplierRoutes() {
         <Route path="onboarding" element={<Onboarding />} />
         <Route path="products" element={<Products />} />
         <Route path="products/:id" element={<ProductEditor supplierApproved={s?.status === 'APPROVED' || s?.status === 'PENDING_REVIEW' || s?.status === 'INFO_REQUESTED'} supplierName={s?.businessName} />} />
+        <Route path="ai-studio" element={<AiStudioPage />} />
         <Route path="enquiries" element={<Enquiries />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />

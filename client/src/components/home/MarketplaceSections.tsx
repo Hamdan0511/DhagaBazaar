@@ -227,9 +227,9 @@ export function ShopBySupplier() {
       {q.isLoading ? (
         <div className="h-28 animate-pulse rounded-xl bg-brand-100/60" aria-hidden />
       ) : suppliers.length ? (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {suppliers.map((s) => (
-            <li key={s.id}>
+            <li key={s.id} className="min-w-0">
               <Link to={`/suppliers/${s.id}`} className="group flex h-full items-start gap-4 rounded-xl border border-line bg-white p-5 transition-shadow hover:shadow-[var(--shadow-lift)]">
                 <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-ivory text-copper-600 ring-1 ring-gold-400/50">
                   <Factory className="size-6 stroke-[1.4]" aria-hidden />

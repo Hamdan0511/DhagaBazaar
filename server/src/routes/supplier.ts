@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { dispatchSchema, productSchema, priceTierProblem, rupeesToPaise, stockUpdateSchema, supplierProfileSchema, FILTER_SETS, GENERAL_PRODUCT_FIELDS, type FilterSetKey } from '@dhaaga/shared';
@@ -12,14 +13,18 @@ import { recomputeOrderStatus } from './retailer.js';
 import { messageLimiter, uploadLimiter } from '../lib/rateLimits.js';
 import { releaseStock } from '../lib/stock.js';
 import { imageDimensions, productImageProblem } from '../lib/imageInfo.js';
+import { aiRouter } from './ai.js';
 
 export const supplierRouter = Router();
 supplierRouter.use(requireRole('SUPPLIER'));
+supplierRouter.use('/ai', aiRouter);
 
 async function currentSupplier(req: Express.Request) {
   if (!req.user?.supplierId) throw badRequest('Supplier profile missing.');
   return prisma.supplier.findUniqueOrThrow({ where: { id: req.user.supplierId } });
 }
+
+const sha256 = (buf: Buffer) => crypto.createHash('sha256').update(buf).digest('hex');
 
 const adminIds = async () => (await prisma.user.findMany({ where: { role: 'ADMIN', isActive: true }, select: { id: true } })).map((u) => u.id);
 
@@ -289,7 +294,7 @@ supplierRouter.post('/products/:id/images', uploadLimiter, ...acceptFiles('image
   );
   if (meta.usageRights === 'LICENSED' && !meta.attribution) throw unprocessable('Licensed photos need an attribution / licence reference.');
   const s = await currentSupplier(req);
-  const product = await prisma.product.findFirst({ where: { id: String(req.params.id), supplierId: s.id }, include: { _count: { select: { images: true } } } });
+  const product = await prisma.product.findFirst({ where: { id: String(req.params.id), supplierId: s.id }, include: { _count: { select: { images: true } }, images: { select: { sha256: true } } } });
   if (!product) throw notFound('Product not found.');
   const files = req.files as Express.Multer.File[];
   if (product._count.images + files.length > 12) throw unprocessable('A listing can have up to 12 photos.');
@@ -297,6 +302,12 @@ supplierRouter.post('/products/:id/images', uploadLimiter, ...acceptFiles('image
   for (const [i, f] of files.entries()) {
     const problem = productImageProblem(f.originalname, dims[i]);
     if (problem) throw unprocessable(problem);
+  }
+  // The same photo twice on one listing adds nothing for retailers: refuse it instead of storing a copy.
+  const hashes = files.map((f) => sha256(f.buffer));
+  const existing = new Set(product.images.map((i) => i.sha256).filter(Boolean));
+  for (const [i, h] of hashes.entries()) {
+    if (existing.has(h) || hashes.indexOf(h) !== i) throw conflict(`"${files[i]!.originalname}" is already on this listing.`);
   }
   const created = [];
   for (const [i, f] of files.entries()) {
@@ -307,7 +318,7 @@ supplierRouter.post('/products/:id/images', uploadLimiter, ...acceptFiles('image
         data: {
           productId: product.id, storageKey: key, url: storage.publicUrl(key), originalFilename: f.originalname.slice(0, 200),
           mimeType: f.mimetype, sizeBytes: f.size, width: dims[i]!.width, height: dims[i]!.height, sortOrder: product._count.images + i, usageRights: meta.usageRights,
-          attribution: meta.attribution || null, altText: meta.altText || product.title,
+          attribution: meta.attribution || null, altText: meta.altText || product.title, sha256: hashes[i],
         },
       }),
     );
@@ -328,6 +339,28 @@ supplierRouter.put('/products/:id/images/order', async (req, res) => {
   }
   await prisma.$transaction(imageIds.map((id, sortOrder) => prisma.productImage.update({ where: { id }, data: { sortOrder } })));
   res.json({ ok: true });
+});
+
+/** Replaces one photo's file in place (same position), e.g. after a retake. The new file is reviewed again. */
+supplierRouter.post('/products/:id/images/:imageId/replace', uploadLimiter, ...acceptFiles('image', IMAGE_MIMES, 1), async (req, res) => {
+  const s = await currentSupplier(req);
+  const image = await prisma.productImage.findFirst({ where: { id: String(req.params.imageId), product: { id: String(req.params.id), supplierId: s.id } }, include: { product: { select: { id: true, status: true, images: { select: { id: true, sha256: true } } } } } });
+  if (!image) throw notFound('Image not found.');
+  const f = (req.files as Express.Multer.File[])[0]!;
+  const dims = imageDimensions(f.buffer, f.mimetype);
+  const problem = productImageProblem(f.originalname, dims);
+  if (problem) throw unprocessable(problem);
+  const hash = sha256(f.buffer);
+  if (image.product.images.some((i) => i.sha256 === hash)) throw conflict(`"${f.originalname}" is already on this listing.`);
+  const key = newKey('public/products', f.mimetype);
+  await storage.put(key, f.buffer);
+  const updated = await prisma.productImage.update({
+    where: { id: image.id },
+    data: { storageKey: key, url: storage.publicUrl(key), originalFilename: f.originalname.slice(0, 200), mimeType: f.mimetype, sizeBytes: f.size, width: dims!.width, height: dims!.height, sha256: hash, aiEnhanced: false, status: 'PENDING' },
+  });
+  await storage.delete(image.storageKey);
+  if (image.product.status === 'APPROVED') await prisma.product.update({ where: { id: image.product.id }, data: { status: 'DRAFT' } });
+  res.json({ image: updated });
 });
 
 supplierRouter.delete('/products/:id/images/:imageId', async (req, res) => {

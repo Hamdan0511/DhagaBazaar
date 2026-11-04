@@ -16,7 +16,8 @@ Suppliers own their stock, set their own wholesale prices and MOQs, and ship dir
 | **Guest-first auth** | Browse everything without an account. Add to cart / save / enquire opens a *Sign in to continue* modal; after login or sign-up the original action is replayed automatically. Role-aware registration (retailer, boutique owner, reseller, wholesaler, manufacturer, distributor), forgot/reset password, change password. |
 | **B2B cart & orders** | Server-persisted cart grouped by supplier, MOQ validated across all sizes/colours of a product, order steps, **stock validation and atomic stock reservation at checkout** (returned on decline/cancel), supplier minimum order value, availability checks, multiple business addresses, one order group per supplier, price snapshots, printable quotation / order request, cancel unconfirmed groups, shipment tracking, complaints & returns. |
 | **Retailer dashboard** | Overview, catalogue, cart, enquiries, orders, shipment tracking, saved products, saved suppliers, complaints, notifications, business profile, settings, help. |
-| **Supplier portal** | Business profile, verification documents (always *pending* until an admin approves), product management (add / edit / delete drafts / archive) with category → subcategory, category-specific attributes, size × colour option builder, per-option stock, a stock-management page, wholesale price (per piece/set/metre/pair), MOQ, order multiples, dispatch time, original photo uploads with usage-rights declaration, availability, enquiries inbox, order confirmation, dispatch details. |
+| **Supplier portal** | Business profile, verification documents (always *pending* until an admin approves), product management (add / edit / delete drafts / archive) with category → subcategory, category-specific attributes, size × colour option builder, per-option stock, a stock-management page, wholesale price (per piece/set/metre/pair), MOQ, order multiples, dispatch time, original photo uploads (in-browser camera with rear-camera preference, or gallery/device; preview, zoom, replace, reorder, primary photo, duplicate guard) with usage-rights declaration, camera capture of verification documents, availability, enquiries inbox, order confirmation, dispatch details. |
+| **Dhaaga Bazaar AI Studio** | `/supplier/ai-studio` and *Enhance with Dhaaga Bazaar AI* inside every listing: take a photo with the camera or upload from the gallery, Gemini garment analysis (type, colour, details, wrinkles, possible defects), five studio backgrounds, enhancement modes and levels, real image-to-image editing with Google Gemini, side-by-side / slider comparison, zoom, download, regenerate, accept into the draft (marked *AI-enhanced* for reviewers and retailers) or discard. Originals are never overwritten; defects are never hidden; per-supplier limits protect API costs. See [docs/AI_STUDIO.md](docs/AI_STUDIO.md). |
 | **Admin** | Live overview, supplier review (approve / reject / suspend with reasons), document review & private viewing, a separate deliberate *documents verified* action, listing approval / change requests / **unpublish**, user deactivation, category management (new categories get full pages automatically), retailers, orders & fulfilment monitoring, commissions, complaints, contact messages, audit log. |
 
 ### Commercial honesty, enforced in code
@@ -49,6 +50,7 @@ cp server/.env.example server/.env
 #    then replace CHANGE_ME in DATABASE_URL with a database password of your choice, set
 #    JWT_SECRET (64+ random chars) and, for a dev admin, ADMIN_EMAIL / ADMIN_PASSWORD (12+ chars)
 cp server/.env.test.example server/.env.test   # same database password; used by `npm test`
+#    optional: GEMINI_API_KEY for Dhaaga Bazaar AI Studio (server-side only; see docs/AI_STUDIO.md)
 
 # 2. Install, create a private dev database on 127.0.0.1:5433, migrate and seed the taxonomy
 npm run setup
@@ -60,6 +62,17 @@ npm run dev
 Open http://localhost:5173. The admin console is at `/admin` (sign in with the `ADMIN_*` credentials you configured — there is no public admin registration).
 
 `npm run db:init` creates a self-contained cluster in `./.pgdata` using your installed PostgreSQL binaries (override with `PG_BIN`). To use an existing PostgreSQL instead, just set `DATABASE_URL`.
+
+### Running with Docker
+
+```bash
+cp .env.docker.example .env.docker        # fill in secrets (git-ignored)
+npm run docker:build
+docker compose --env-file .env.docker up -d db && npm run docker:migrate && npm run docker:seed
+npm run docker:up                          # http://localhost:8080
+```
+
+nginx (web) + Express API + PostgreSQL 18 with persistent volumes, health checks, non-root containers and a hot-reload dev override (`npm run docker:dev`). Backups, restore and moving the existing local database into Docker: see [docs/DOCKER.md](docs/DOCKER.md).
 
 ### Trying the shopping flow before suppliers exist
 
@@ -81,7 +94,8 @@ npm run seed:dev-fixtures -w server -- --remove   # remove them again
 | `npm run db:backup` / `npm run db:restore -- <dump> <new_db>` | Backup (dump + uploads) and restore into a **new** database (never overwrites) |
 | `npm run e2e:journeys` | 32-step browser acceptance run: supplier → admin → retailer → order → security → mobile (needs `ADMIN_EMAIL`/`ADMIN_PASSWORD` env and a photo path; clean up with `npm run e2e:cleanup`) |
 | `npm run e2e:guest` | Browser flow: guest → Add to Cart → sign up → auto-added → multi-supplier checkout (needs fixtures) |
-| `npm run e2e:cleanup` | Remove records created by the browser flows |
+| `node scripts/e2e-ai-studio.mjs <dir> <garment.jpg> <second.jpg>` | AI Studio browser run against the **live** Gemini key in `server/.env` (camera, gallery, analysis, generation, documents, mobile) |
+| `npm run e2e:cleanup` | Remove records created by the browser flows (including their AI Studio files) |
 | `node scripts/screenshot.mjs <dir> 1440x900 / /categories/womens-wear --full` | Visual QA screenshots + console error report |
 
 ---

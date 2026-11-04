@@ -1,0 +1,78 @@
+# Dhaaga Bazaar — development override (hot reload). Layer it on the base file:
+#
+#   docker compose --env-file .env.docker -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# - Vite dev server with HMR:   http://localhost:5180
+# - API (tsx watch):            http://localhost:4001/api/health
+# - PostgreSQL:                 127.0.0.1:5434 (this machine only)
+#
+# Source is bind-mounted; Linux node_modules live in container volumes so they never mix with the
+# host's Windows/macOS node_modules. Database and uploads use the same named volumes as the base
+# stack. The native (non-Docker) workflow — `npm run dev` on ports 5173/4000/5433 — is unaffected.
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DEV_DB_PORT:-5434}:5432"
+    networks: [backend, frontend]
+
+  server:
+    build:
+      target: deps
+    image: dhaaga-bazaar/dev-deps-server:latest
+    working_dir: /app/server
+    command: ["sh", "-c", "npx prisma generate && npx tsx watch src/index.ts"]
+    environment:
+      NODE_ENV: development
+      TRUST_PROXY: "0"
+      CLIENT_ORIGIN: http://localhost:${DEV_WEB_PORT:-5180}
+      APP_URL: http://localhost:${DEV_WEB_PORT:-5180}
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - dev_node_modules:/app/node_modules
+      - dev_server_node_modules:/app/server/node_modules
+      - dev_client_node_modules:/app/client/node_modules
+      - dev_shared_node_modules:/app/shared/node_modules
+      - uploads:/app/server/uploads
+    ports:
+      - "127.0.0.1:${DEV_API_PORT:-4001}:4000"
+    read_only: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  web:
+    build:
+      target: deps
+    image: dhaaga-bazaar/dev-deps-web:latest
+    working_dir: /app/client
+    command: ["npx", "vite", "--host", "0.0.0.0", "--port", "5173", "--strictPort"]
+    environment:
+      API_URL: http://server:4000
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - dev_node_modules:/app/node_modules
+      - dev_server_node_modules:/app/server/node_modules
+      - dev_client_node_modules:/app/client/node_modules
+      - dev_shared_node_modules:/app/shared/node_modules
+    ports: !override
+      - "127.0.0.1:${DEV_WEB_PORT:-5180}:5173"
+    read_only: false
+    tmpfs: !reset []
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+volumes:
+  dev_node_modules:
+  dev_server_node_modules:
+  dev_client_node_modules:
+  dev_shared_node_modules:

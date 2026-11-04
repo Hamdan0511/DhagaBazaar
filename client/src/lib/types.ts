@@ -68,7 +68,7 @@ export interface ProductDetail extends Omit<ProductCardData, 'images' | 'supplie
   priceTiers?: { minQty: number; pricePaise: number }[];
   category: { path: string; name: string; filterSet: string };
   variants: Variant[];
-  images: { id: string; url: string; altText: string | null; attribution: string | null }[];
+  images: { id: string; url: string; altText: string | null; attribution: string | null; aiEnhanced?: boolean }[];
   supplier: {
     id: string;
     businessName: string;

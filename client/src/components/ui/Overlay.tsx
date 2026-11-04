@@ -53,7 +53,7 @@ export function Modal({ open, onClose, title, children, className, labelledBy }:
         aria-modal="true"
         aria-labelledby={labelledBy ?? (title ? titleId : undefined)}
         tabIndex={-1}
-        className={cn('relative max-h-[94vh] w-full animate-slide-up overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:max-w-lg sm:rounded-xl', className)}
+        className={cn('relative max-h-[94vh] w-full animate-slide-up overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-xl', !/max-w-/.test(className ?? '') && 'sm:max-w-lg', className)}
       >
         <button onClick={onClose} className="absolute top-3 right-3 z-10 rounded-full p-2 text-muted hover:bg-brand-100 hover:text-brand-900" aria-label="Close">
           <X className="size-5" />

@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Camera, CameraOff, Check, ImagePlus, RefreshCw, Star, SwitchCamera, Trash2, Upload, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, ImagePlus, Maximize2, Replace, Sparkles, Star, Trash2, Upload, X } from 'lucide-react';
 import { IMAGE_USAGE_RIGHTS } from '@dhaaga/shared';
 import { api, errorMessage } from '@/lib/api';
 import { liveCameraSupported, preparePhoto, PHOTO_RULES, type PreparedPhoto } from '@/lib/photos';
@@ -9,6 +9,8 @@ import { Alert, StatusBadge } from '@/components/ui/Feedback';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Overlay';
+import { CameraCapture, ImageZoom } from '@/components/media/CameraCapture';
+import { AiStudio } from './AiStudio';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { cn } from '@/lib/utils';
 import { toast } from '@/stores/ui';
@@ -21,177 +23,14 @@ export interface ProductPhoto {
   status: string;
   width?: number | null;
   height?: number | null;
+  aiEnhanced?: boolean;
 }
 
 const MAX_PHOTOS = 12;
 const MAX_PER_UPLOAD = 8;
 
-type CameraState = { kind: 'starting' } | { kind: 'live' } | { kind: 'captured'; blob: Blob; url: string } | { kind: 'error'; message: string };
-
-/**
- * Live camera via MediaDevices. Prefers the rear camera, lets the supplier retake before
- * keeping a shot, and always stops the camera stream when closed.
- */
-function CameraCapture({ open, onClose, onCapture, onUseNativeCamera }: { open: boolean; onClose: () => void; onCapture: (blob: Blob) => Promise<string | null>; onUseNativeCamera: () => void }) {
-  const video = useRef<HTMLVideoElement>(null);
-  const stream = useRef<MediaStream | null>(null);
-  const [state, setState] = useState<CameraState>({ kind: 'starting' });
-  const [facing, setFacing] = useState<'environment' | 'user'>('environment');
-  const [saving, setSaving] = useState(false);
-  const [count, setCount] = useState(0);
-  const [rejected, setRejected] = useState<string | null>(null);
-
-  const stop = useCallback(() => {
-    stream.current?.getTracks().forEach((t) => t.stop());
-    stream.current = null;
-    if (video.current) video.current.srcObject = null;
-  }, []);
-
-  const start = useCallback(async () => {
-    stop();
-    setState({ kind: 'starting' });
-    try {
-      const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 2560 }, height: { ideal: 1920 } }, audio: false });
-      stream.current = s;
-      if (video.current) {
-        video.current.srcObject = s;
-        await video.current.play().catch(() => undefined);
-      }
-      setState({ kind: 'live' });
-    } catch (e) {
-      const name = (e as DOMException)?.name;
-      const message =
-        name === 'NotAllowedError' || name === 'SecurityError'
-          ? 'Camera permission was denied. Allow camera access for this site in your browser settings, or upload a photo from your device instead.'
-          : name === 'NotFoundError' || name === 'OverconstrainedError'
-            ? 'No camera was found on this device. Upload a photo from your device instead.'
-            : name === 'NotReadableError'
-              ? 'The camera is being used by another app. Close it and try again.'
-              : 'The camera could not be started on this browser.';
-      setState({ kind: 'error', message });
-    }
-  }, [facing, stop]);
-
-  useEffect(() => {
-    if (!open) return;
-    setCount(0);
-    void start();
-    return stop;
-  }, [open, start, stop]);
-
-  // Release the camera if the page is hidden (e.g. phone locked) — restarted on demand.
-  useEffect(() => {
-    if (!open) return;
-    const onHide = () => document.visibilityState === 'hidden' && stop();
-    document.addEventListener('visibilitychange', onHide);
-    return () => document.removeEventListener('visibilitychange', onHide);
-  }, [open, stop]);
-
-  const capture = () => {
-    const v = video.current;
-    if (!v || !v.videoWidth) return;
-    const canvas = document.createElement('canvas');
-    canvas.width = v.videoWidth;
-    canvas.height = v.videoHeight;
-    canvas.getContext('2d')!.drawImage(v, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) return setState({ kind: 'error', message: 'The photo could not be captured. Please try again.' });
-        stop(); // freeze: the preview is the captured still, not the live feed
-        setState({ kind: 'captured', blob, url: URL.createObjectURL(blob) });
-      },
-      'image/jpeg',
-      0.92,
-    );
-  };
-
-  const retake = () => {
-    setRejected(null);
-    if (state.kind === 'captured') URL.revokeObjectURL(state.url);
-    void start();
-  };
-
-  const keep = async (another: boolean) => {
-    if (state.kind !== 'captured') return;
-    setSaving(true);
-    try {
-      const problem = await onCapture(state.blob);
-      setRejected(problem);
-      if (problem) return; // keep the preview so the supplier can retake
-      URL.revokeObjectURL(state.url);
-      setCount((c) => c + 1);
-      if (another) void start();
-      else onClose();
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const close = () => {
-    if (state.kind === 'captured') URL.revokeObjectURL(state.url);
-    stop();
-    onClose();
-  };
-
-  return (
-    <Modal open={open} onClose={close} title="Take product photo" className="sm:max-w-2xl">
-      <div className="p-4 sm:p-6">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-charcoal">
-          <video ref={video} playsInline muted aria-label="Live camera preview" className={cn('absolute inset-0 size-full object-contain', state.kind !== 'live' && 'invisible')} />
-          {state.kind === 'captured' && <img src={state.url} alt="Captured photo preview" className="absolute inset-0 size-full object-contain" />}
-          {state.kind === 'starting' && <p className="absolute inset-0 flex items-center justify-center text-sm text-white/80">Starting camera… allow camera access if your browser asks.</p>}
-          {state.kind === 'error' && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-sm text-white">
-              <CameraOff className="size-8 text-gold-300" aria-hidden />
-              <p className="max-w-sm">{state.message}</p>
-            </div>
-          )}
-        </div>
-        {rejected && (
-          <Alert tone="danger" className="mt-3">
-            {rejected}
-          </Alert>
-        )}
-        <p className="mt-3 text-xs text-muted">
-          Tip: photograph the garment flat or on a hanger/mannequin in good daylight, filling the frame. {count > 0 && <strong className="text-success">{count} photo(s) added.</strong>}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {state.kind === 'live' && (
-            <>
-              <Button onClick={capture} icon={<Camera className="size-4" />}>
-                Capture
-              </Button>
-              <Button variant="subtle" icon={<SwitchCamera className="size-4" />} onClick={() => setFacing((f) => (f === 'environment' ? 'user' : 'environment'))}>
-                Switch camera
-              </Button>
-            </>
-          )}
-          {state.kind === 'captured' && (
-            <>
-              <Button onClick={() => keep(false)} loading={saving} icon={<Check className="size-4" />}>
-                Use photo
-              </Button>
-              <Button variant="subtle" onClick={() => keep(true)} disabled={saving}>
-                Use & take another
-              </Button>
-              <Button variant="subtle" onClick={retake} disabled={saving} icon={<RefreshCw className="size-4" />}>
-                Retake
-              </Button>
-            </>
-          )}
-          {state.kind === 'error' && (
-            <Button variant="subtle" onClick={() => void start()} icon={<RefreshCw className="size-4" />}>
-              Try again
-            </Button>
-          )}
-          <button type="button" onClick={() => { close(); onUseNativeCamera(); }} className="ml-auto text-sm font-medium text-copper-600 hover:underline">
-            Use phone camera app instead
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
+type StagedPhoto = PreparedPhoto & { fingerprint: string };
+const fingerprint = (f: File | Blob) => (f instanceof File ? `${f.name}:${f.size}:${f.lastModified}` : '');
 
 /**
  * Product photos: take with the camera or upload from the device, preview and remove before
@@ -202,13 +41,17 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
   const qc = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
   const captureInput = useRef<HTMLInputElement>(null);
-  const [staged, setStaged] = useState<PreparedPhoto[]>([]);
+  const [staged, setStaged] = useState<StagedPhoto[]>([]);
   const [problems, setProblems] = useState<string[]>([]);
   const [rights, setRights] = useState('');
   const [attribution, setAttribution] = useState('');
   const [camera, setCamera] = useState(false);
   const [order, setOrder] = useState<ProductPhoto[]>(photos);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<ProductPhoto | null>(null);
+  const [studio, setStudio] = useState<{ photoId?: string } | null>(null);
+  const replaceInput = useRef<HTMLInputElement>(null);
+  const replaceTarget = useRef<string | null>(null);
   const { confirm, element: confirmElement } = useConfirmDialog();
   const refresh = () => qc.invalidateQueries({ queryKey: ['supplier', 'product', productId] });
 
@@ -222,12 +65,23 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
 
   const addFiles = async (files: (File | Blob)[], source: PreparedPhoto['source']) => {
     const errs: string[] = [];
-    const ok: PreparedPhoto[] = [];
-    const accepted = files.slice(0, Math.max(0, room));
-    if (files.length > accepted.length) errs.push(`A listing can have up to ${MAX_PHOTOS} photos — ${files.length - accepted.length} photo(s) were not added.`);
+    const ok: StagedPhoto[] = [];
+    // Skip files already staged (same name, size and date): choosing the same photo twice uploads it once.
+    const seen = new Set(staged.map((p) => p.fingerprint));
+    const fresh = files.filter((f) => {
+      const fp = fingerprint(f);
+      if (fp && seen.has(fp)) {
+        errs.push(`"${(f as File).name}" is already in the list.`);
+        return false;
+      }
+      if (fp) seen.add(fp);
+      return true;
+    });
+    const accepted = fresh.slice(0, Math.max(0, room));
+    if (fresh.length > accepted.length) errs.push(`A listing can have up to ${MAX_PHOTOS} photos — ${fresh.length - accepted.length} photo(s) were not added.`);
     for (const f of accepted) {
       try {
-        ok.push(await preparePhoto(f, source));
+        ok.push({ ...(await preparePhoto(f, source)), fingerprint: fingerprint(f) || crypto.randomUUID() });
       } catch (e) {
         errs.push((e as Error).message);
       }
@@ -274,6 +128,21 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
     onError: (e) => toast({ tone: 'error', title: errorMessage(e) }),
   });
 
+  const replace = useMutation({
+    mutationFn: async ({ imageId, file }: { imageId: string; file: File }) => {
+      const prepared = await preparePhoto(file, 'device');
+      URL.revokeObjectURL(prepared.previewUrl);
+      const fd = new FormData();
+      fd.append('image', prepared.file, prepared.file.name);
+      return api.post(`/supplier/products/${productId}/images/${imageId}/replace`, fd);
+    },
+    onSuccess: () => {
+      toast({ tone: 'success', title: 'Photo replaced', description: 'The new photo keeps the same position and will be reviewed.' });
+      void refresh();
+    },
+    onError: (e) => toast({ tone: 'error', title: 'Could not replace the photo', description: errorMessage(e) }),
+  });
+
   const move = (from: number, to: number) => {
     if (to < 0 || to >= order.length || from === to) return;
     const next = [...order];
@@ -318,6 +187,14 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
               >
                 <div className="relative aspect-square cursor-grab bg-brand-50 active:cursor-grabbing">
                   <img src={img.url} alt={`Product photo ${i + 1}`} className="absolute inset-0 size-full object-cover" draggable={false} />
+                  <button type="button" onClick={() => setZoom(img)} className="absolute top-1.5 right-1.5 rounded-full bg-white/90 p-1.5 text-charcoal shadow hover:bg-white" aria-label={`Zoom photo ${i + 1}`}>
+                    <Maximize2 className="size-3.5" />
+                  </button>
+                  {img.aiEnhanced && (
+                    <span className="absolute right-1.5 bottom-1.5 inline-flex items-center gap-1 rounded-full bg-brand-900/90 px-2 py-0.5 text-[0.625rem] font-semibold text-gold-300">
+                      <Sparkles className="size-3" aria-hidden /> AI enhanced
+                    </span>
+                  )}
                   {i === 0 && (
                     <span className="absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-copper-600 px-2 py-0.5 text-[0.6875rem] font-semibold text-white">
                       <Star className="size-3 fill-current" aria-hidden /> Primary
@@ -339,10 +216,27 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
                   )}
                   <button
                     type="button"
+                    onClick={() => {
+                      replaceTarget.current = img.id;
+                      replaceInput.current?.click();
+                    }}
+                    className="ml-auto rounded p-1.5 text-muted hover:bg-brand-50 hover:text-charcoal"
+                    aria-label={`Replace photo ${i + 1}`}
+                    title="Replace"
+                  >
+                    <Replace className="size-4" />
+                  </button>
+                  {!img.aiEnhanced && (
+                    <button type="button" onClick={() => setStudio({ photoId: img.id })} className="rounded p-1.5 text-copper-600 hover:bg-copper-50" aria-label={`Enhance photo ${i + 1} with Dhaaga Bazaar AI`} title="Enhance with Dhaaga Bazaar AI">
+                      <Sparkles className="size-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
                     onClick={async () => {
                       if (await confirm({ title: 'Remove this photo?', body: 'It is deleted from the listing. This cannot be undone.', confirmLabel: 'Remove photo', tone: 'danger' })) remove.mutate(img.id);
                     }}
-                    className="ml-auto rounded p-1.5 text-muted hover:bg-danger-bg hover:text-danger"
+                    className="rounded p-1.5 text-muted hover:bg-danger-bg hover:text-danger"
                     aria-label={`Remove photo ${i + 1}`}
                   >
                     <Trash2 className="size-4" />
@@ -362,9 +256,24 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
             Take Photo
           </Button>
           <Button type="button" variant="outline" icon={<ImagePlus className="size-4" />} onClick={() => fileInput.current?.click()} disabled={room <= 0}>
-            Upload from Device
+            Upload from Gallery / Device
+          </Button>
+          <Button type="button" variant="copper" icon={<Sparkles className="size-4" />} onClick={() => setStudio({})} disabled={room <= 0}>
+            Enhance with Dhaaga Bazaar AI
           </Button>
         </div>
+        <input
+          ref={replaceInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          data-testid="photo-replace-input"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file && replaceTarget.current) replace.mutate({ imageId: replaceTarget.current, file });
+          }}
+        />
         {/* Gallery / file picker (multiple). */}
         <input
           ref={fileInput}
@@ -449,8 +358,24 @@ export function ProductPhotos({ productId, photos, canSubmit }: { productId: str
       </div>
       {!canSubmit && <p className="mt-3 text-xs text-muted">Listings can be submitted for review once your supplier application has been submitted.</p>}
 
+      {zoom && <ImageZoom open onClose={() => setZoom(null)} src={zoom.url} alt="Product photo" title={zoom.aiEnhanced ? 'AI-enhanced photo' : 'Product photo'} />}
+      <Modal open={!!studio} onClose={() => setStudio(null)} title="Dhaaga Bazaar AI Studio" className="sm:max-w-6xl">
+        <div className="bg-ivory-light p-3 sm:p-5">
+          {studio && (
+            <AiStudio
+              productId={productId}
+              productImageId={studio.photoId}
+              onAccepted={() => {
+                setStudio(null);
+                void refresh();
+              }}
+            />
+          )}
+        </div>
+      </Modal>
       <CameraCapture
         open={camera}
+        title="Take product photo"
         onClose={() => setCamera(false)}
         onUseNativeCamera={() => captureInput.current?.click()}
         onCapture={(blob) => addFiles([new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })], 'camera')}

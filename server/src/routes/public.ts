@@ -45,7 +45,7 @@ publicRouter.get('/products/:id', async (req, res) => {
     include: {
       category: { select: { path: true, name: true, filterSet: true } },
       variants: { orderBy: [{ colour: 'asc' }, { size: 'asc' }] },
-      images: { where: { status: 'ACCEPTED' }, orderBy: { sortOrder: 'asc' }, select: { id: true, url: true, altText: true, attribution: true } },
+      images: { where: { status: 'ACCEPTED' }, orderBy: { sortOrder: 'asc' }, select: { id: true, url: true, altText: true, attribution: true, aiEnhanced: true } },
       supplier: {
         select: { id: true, businessName: true, businessType: true, city: true, state: true, isVerified: true, yearEstablished: true, description: true, isFixture: true, minOrderValuePaise: true },
       },

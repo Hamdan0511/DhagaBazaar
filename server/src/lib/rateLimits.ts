@@ -59,3 +59,13 @@ export const messageLimiter = rateLimit({
   legacyHeaders: false,
   message: tooMany('You have sent a lot of messages recently. Please try again later.'),
 });
+
+/** Dhaaga Bazaar AI analysis/generation requests per user (cost protection on top of the daily caps). */
+export const aiLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: isTest ? 1000 : 20,
+  keyGenerator: userOrIp,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: tooMany('Too many AI requests in a short time. Please wait a few minutes and try again.'),
+});

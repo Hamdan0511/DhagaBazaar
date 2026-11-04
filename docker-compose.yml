@@ -1,0 +1,111 @@
+# Dhaaga Bazaar — production-style Docker Compose stack.
+#
+#   cp .env.docker.example .env.docker      # then fill in real values
+#   docker compose --env-file .env.docker build
+#   docker compose --env-file .env.docker up -d db
+#   docker compose --env-file .env.docker run --rm migrate         # controlled migration step
+#   docker compose --env-file .env.docker up -d
+#
+# (`npm run docker:*` wraps these; see docs/DOCKER.md.)
+#
+# Data lives in named volumes (dhaaga-bazaar_pgdata, dhaaga-bazaar_uploads). `docker compose down` keeps them.
+# NEVER run `docker compose down -v` unless you intend to delete the database and all uploads.
+
+name: dhaaga-bazaar
+
+x-server-env: &server-env
+  NODE_ENV: production
+  PORT: "4000"
+  DATABASE_URL: postgresql://${POSTGRES_USER:-dhaaga}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}@db:5432/${POSTGRES_DB:-dhaaga_bazaar}?schema=public
+  UPLOAD_DIR: uploads
+  # nginx (the web container) is the single reverse-proxy hop in front of the API.
+  TRUST_PROXY: "1"
+
+services:
+  db:
+    image: postgres:18-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dhaaga}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}
+      POSTGRES_DB: ${POSTGRES_DB:-dhaaga_bazaar}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/<major>/docker.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    # Not published to the host. Use `docker compose exec db psql …` or the dev override.
+    networks: [backend]
+    shm_size: 256mb
+
+  # One-off: `docker compose run --rm migrate` (prisma migrate deploy — never reset).
+  migrate:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: migrator
+    image: dhaaga-bazaar/migrator:latest
+    profiles: [tools]
+    env_file: [.env.docker]
+    environment: *server-env
+    volumes:
+      - uploads:/app/server/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend]
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: runtime
+    image: dhaaga-bazaar/server:latest
+    restart: unless-stopped
+    init: true
+    env_file: [.env.docker]
+    environment: *server-env
+    volumes:
+      - uploads:/app/server/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ["no-new-privileges:true"]
+    stop_grace_period: 20s
+    networks: [backend, frontend]
+
+  web:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      target: runtime
+    image: dhaaga-bazaar/web:latest
+    restart: unless-stopped
+    # No env_file: the web container never sees secrets (no Gemini key, no DB password).
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    depends_on:
+      server:
+        condition: service_healthy
+    read_only: true
+    tmpfs: [/tmp, /var/cache/nginx]
+    security_opt: ["no-new-privileges:true"]
+    networks: [frontend]
+
+# Project-scoped names (dhaaga-bazaar_pgdata, dhaaga-bazaar_uploads), so a second project
+# (e.g. `-p dhaaga-test`) can never touch this data.
+volumes:
+  pgdata:
+  uploads:
+
+networks:
+  backend:
+    internal: true
+  frontend:

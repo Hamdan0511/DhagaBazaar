@@ -1,0 +1,39 @@
+# Build context is the repository root (npm workspaces). Keep secrets, data and host
+# artefacts out of every image.
+
+# Secrets and local configuration — never copied into an image
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.test.example
+!.env.docker.example
+
+# Data: database clusters, backups and uploaded files
+.pgdata
+backups
+**/*.dump
+server/uploads
+uploads-test
+server/uploads-test
+
+# Host dependencies and build output (rebuilt inside the image for Linux)
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+
+# Tooling, VCS and test artefacts
+.git
+.github
+.claude
+.vscode
+.idea
+e2e-shots
+qa-shots
+**/*.log
+.DS_Store
+docker-compose*.yml
+**/Dockerfile
+docs

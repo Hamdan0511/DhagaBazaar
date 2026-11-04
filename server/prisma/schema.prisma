@@ -144,19 +144,19 @@ enum ComplaintStatus {
 // ─── Identity ─────────────────────────────────────────────────────────────
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
+  id           String        @id @default(cuid())
+  email        String        @unique
   passwordHash String
   fullName     String
   phone        String?
   role         Role
   businessType BusinessType?
-  isActive     Boolean      @default(true)
+  isActive     Boolean       @default(true)
   /// Incremented to invalidate all existing sessions (logout everywhere / password change).
-  tokenVersion Int          @default(0)
+  tokenVersion Int           @default(0)
   lastLoginAt  DateTime?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   retailer      Retailer?
   supplier      Supplier?
@@ -228,42 +228,44 @@ model Address {
 // ─── Suppliers ────────────────────────────────────────────────────────────
 
 model Supplier {
-  id              String         @id @default(cuid())
-  userId          String         @unique
-  businessName    String
-  businessType    BusinessType
-  contactName     String
-  phone           String
-  whatsapp        String?
-  gstin           String?
-  yearEstablished Int?
-  description     String?
-  addressLine     String?
-  city            String?
-  state           String?
-  pincode         String?
-  categoryPaths   String[]       @default([])
+  id                 String         @id @default(cuid())
+  userId             String         @unique
+  businessName       String
+  businessType       BusinessType
+  contactName        String
+  phone              String
+  whatsapp           String?
+  gstin              String?
+  yearEstablished    Int?
+  description        String?
+  addressLine        String?
+  city               String?
+  state              String?
+  pincode            String?
+  categoryPaths      String[]       @default([])
   minOrderValuePaise Int?
-  status          SupplierStatus @default(INCOMPLETE)
+  status             SupplierStatus @default(INCOMPLETE)
   /// Only ever set true by an admin after reviewing documents. Never automatic.
-  isVerified      Boolean        @default(false)
-  verifiedAt      DateTime?
-  rejectionReason String?
+  isVerified         Boolean        @default(false)
+  verifiedAt         DateTime?
+  rejectionReason    String?
   /// What the admin asked the supplier to add or correct (status INFO_REQUESTED).
-  infoRequest     String?
-  submittedAt     DateTime?
-  reviewedAt      DateTime?
-  reviewedById    String?
+  infoRequest        String?
+  submittedAt        DateTime?
+  reviewedAt         DateTime?
+  reviewedById       String?
   /// When the application was last approved (reviewedById records who approved it).
-  approvedAt      DateTime?
+  approvedAt         DateTime?
   /// Development fixture flag — fixtures are never shown when NODE_ENV=production.
-  isFixture       Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  isFixture          Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents      SupplierDocument[]
   products       Product[]
+  aiSources      AiSourcePhoto[]
+  aiGenerations  AiGeneration[]
   supplierOrders SupplierOrder[]
   enquiries      Enquiry[]
   savedBy        SavedSupplier[]
@@ -275,18 +277,18 @@ model Supplier {
 }
 
 model SupplierDocument {
-  id           String       @id @default(cuid())
-  supplierId   String
-  type         DocumentType
-  storageKey   String
-  fileName     String
-  mimeType     String
-  sizeBytes    Int
-  status       ReviewStatus @default(PENDING)
-  reviewNote   String?
-  uploadedAt   DateTime     @default(now())
-  reviewedAt   DateTime?
-  supplier     Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  id         String       @id @default(cuid())
+  supplierId String
+  type       DocumentType
+  storageKey String
+  fileName   String
+  mimeType   String
+  sizeBytes  Int
+  status     ReviewStatus @default(PENDING)
+  reviewNote String?
+  uploadedAt DateTime     @default(now())
+  reviewedAt DateTime?
+  supplier   Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 
   @@index([supplierId])
   @@map("supplier_documents")
@@ -354,6 +356,7 @@ model Product {
   savedBy   SavedProduct[]
   enquiries Enquiry[]
   reviews   Review[]
+  aiSources AiSourcePhoto[]
 
   @@index([status, categoryId])
   @@index([supplierId])
@@ -361,19 +364,19 @@ model Product {
 }
 
 model ProductVariant {
-  id          String   @id @default(cuid())
-  productId   String
-  size        String?
-  colour      String?
-  sku         String?
+  id            String     @id @default(cuid())
+  productId     String
+  size          String?
+  colour        String?
+  sku           String?
   /// Optional per-variant price override (paise).
-  pricePaise  Int?
+  pricePaise    Int?
   /// Units available for this option. Null = stock not tracked.
   stockQuantity Int?
-  isAvailable Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  cartItems   CartItem[]
+  isAvailable   Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  product       Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems     CartItem[]
 
   @@index([productId])
   @@map("product_variants")
@@ -394,8 +397,13 @@ model ProductImage {
   usageRights      ImageUsageRights
   attribution      String?
   status           ReviewStatus     @default(PENDING)
+  /// SHA-256 of the stored file; used to refuse uploading the same photo twice to one listing.
+  sha256           String?
+  /// True when this photo is a Dhaaga Bazaar AI enhancement the supplier accepted (shown to reviewers and retailers).
+  aiEnhanced       Boolean          @default(false)
   createdAt        DateTime         @default(now())
   product          Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  aiGeneration     AiGeneration?
 
   @@index([productId])
   @@index([storageKey])
@@ -675,4 +683,87 @@ model ContactMessage {
   createdAt DateTime @default(now())
 
   @@map("contact_messages")
+}
+
+// ─── Dhaaga Bazaar AI Studio ──────────────────────────────────────────────
+
+enum AiAnalysisStatus {
+  NOT_STARTED
+  ANALYSING
+  COMPLETED
+  FAILED
+}
+
+enum AiGenerationStatus {
+  GENERATING
+  COMPLETED
+  FAILED
+  ACCEPTED
+  DISCARDED
+}
+
+/// An original photo a supplier brought into AI Studio. Stored privately and never modified.
+model AiSourcePhoto {
+  id             String           @id @default(cuid())
+  supplierId     String
+  /// Listing the photo is being prepared for (optional: the studio can be used before choosing one).
+  productId      String?
+  /// Set when the original is an existing listing photo.
+  productImageId String?
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  width          Int
+  height         Int
+  sha256         String
+  analysisStatus AiAnalysisStatus @default(NOT_STARTED)
+  /// Structured garment analysis returned by the analysis model.
+  analysis       Json?
+  analysisModel  String?
+  analysisError  String?
+  createdAt      DateTime         @default(now())
+  supplier       Supplier         @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  product        Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  generations    AiGeneration[]
+
+  @@index([supplierId, createdAt])
+  @@index([supplierId, sha256])
+  @@map("ai_source_photos")
+}
+
+/// One AI enhancement attempt of a source photo. Every attempt is a separate version.
+model AiGeneration {
+  id             String             @id @default(cuid())
+  supplierId     String
+  sourceId       String
+  status         AiGenerationStatus @default(GENERATING)
+  background     String
+  mode           String
+  level          String
+  garmentType    String
+  colour         String
+  categoryPath   String?
+  model          String
+  prompt         String
+  storageKey     String?
+  mimeType       String?
+  sizeBytes      Int?
+  width          Int?
+  height         Int?
+  /// Safe error code shown to the supplier (details are only in server logs).
+  errorCode      String?
+  durationMs     Int?
+  /// Listing photo created when the supplier accepted this version.
+  productImageId String?            @unique
+  createdAt      DateTime           @default(now())
+  completedAt    DateTime?
+  decidedAt      DateTime?
+  supplier       Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  source         AiSourcePhoto      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  productImage   ProductImage?      @relation(fields: [productImageId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId, createdAt])
+  @@index([supplierId, status])
+  @@index([sourceId])
+  @@map("ai_generations")
 }

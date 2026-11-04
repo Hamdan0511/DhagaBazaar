@@ -178,7 +178,7 @@ interface AdminProduct {
   isFixture: boolean;
   supplier: { id: string; businessName: string; status: string };
   category: { name: string; path: string };
-  images: { id: string; url: string; usageRights: string; attribution: string | null; width: number | null; height: number | null }[];
+  images: { id: string; url: string; usageRights: string; attribution: string | null; width: number | null; height: number | null; aiEnhanced?: boolean }[];
   variants: { id: string; size: string | null; colour: string | null; stockQuantity: number | null }[];
 }
 
@@ -248,6 +248,7 @@ function Products() {
                             <img src={i.url} alt={`Photo ${idx + 1} of ${p.title}`} className="size-24 rounded-md border border-line object-cover" />
                           </a>
                           {idx === 0 && <span className="font-semibold text-brand-900">Primary · </span>}
+                          {i.aiEnhanced && <span className="font-semibold text-copper-600">AI-enhanced · </span>}
                           {titleCase(i.usageRights)}
                           {i.width ? ` · ${i.width}×${i.height}` : ''}
                           {i.attribution ? ` · ${i.attribution}` : ''}

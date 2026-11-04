@@ -11,6 +11,7 @@ server/uploads/*
 coverage
 uploads-test
 !.env.test.example
+!.env.docker.example
 e2e-shots
 qa-shots
 backups

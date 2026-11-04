@@ -1,5 +1,7 @@
 # Production deployment
 
+Containerised deployment (nginx + API + PostgreSQL with Docker Compose) is documented in [DOCKER.md](DOCKER.md); the checklist below applies to both.
+
 ## Checklist
 
 1. **PostgreSQL** — a managed instance (with backups). Set `DATABASE_URL`.
@@ -10,6 +12,8 @@
    - `UPLOAD_DIR` — a persistent volume path (or implement the S3 adapter)
    - leave `ENABLE_DEV_FIXTURES` unset (fixtures can never show in production regardless)
    - `TRUST_PROXY=1` if (and only if) the API sits behind one reverse proxy/load balancer; otherwise leave 0
+   - `GEMINI_API_KEY` for Dhaaga Bazaar AI Studio (a project with **billing enabled** — the free tier has no image-editing quota); optional `GEMINI_IMAGE_MODEL`, `GEMINI_ANALYSIS_MODEL`, `GEMINI_IMAGE_SIZE`, `AI_DAILY_GENERATIONS`. Keep it in the secret store, never in client variables. See `docs/AI_STUDIO.md` (costs, storage, troubleshooting)
+   - AI Studio originals/versions live under `UPLOAD_DIR/private/ai/` — include them in the persistent volume / object storage and backups
    - `EMAIL_PROVIDER` once email is wired (the server warns at startup until then)
    - the server **refuses to start** in production with a weak `JWT_SECRET`, a localhost `CLIENT_ORIGIN` or a non-https `APP_URL`
 3. **Build:** `npm ci && npm run build`
