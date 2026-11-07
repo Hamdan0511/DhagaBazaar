@@ -8,13 +8,15 @@ import { parse } from '../middleware/validate.js';
 import { badRequest, notFound, paginate, unprocessable } from '../lib/http.js';
 import { audit, notify } from '../lib/audit.js';
 import { storage } from '../lib/storage.js';
+import { adminPaymentsRouter } from './adminPayments.js';
 
 export const adminRouter = Router();
 adminRouter.use(requireRole('ADMIN'));
+adminRouter.use(adminPaymentsRouter);
 
 adminRouter.get('/overview', async (_req, res) => {
   const genuine = { isFixture: false } as const;
-  const [retailers, suppliersByStatus, productsByStatus, genuineOrders, ordersByStatus, openComplaints, verifiedSuppliers, unhandledMessages, pendingDocuments, recent] = await Promise.all([
+  const [retailers, suppliersByStatus, productsByStatus, genuineOrders, ordersByStatus, openComplaints, verifiedSuppliers, unhandledMessages, pendingDocuments, recent, paymentsToVerify] = await Promise.all([
     prisma.retailer.count(),
     prisma.supplier.groupBy({ by: ['status'], where: genuine, _count: { _all: true } }),
     prisma.product.groupBy({ by: ['status'], where: genuine, _count: { _all: true } }),
@@ -31,6 +33,7 @@ adminRouter.get('/overview', async (_req, res) => {
       take: 5,
       select: { id: true, businessName: true, city: true, status: true, submittedAt: true, createdAt: true },
     }),
+    prisma.payment.count({ where: { status: 'SUBMITTED' } }),
   ]);
   const toMap = (rows: { status: string; _count: { _all: number } }[]) => Object.fromEntries(rows.map((r) => [r.status, r._count._all]));
   const suppliers = toMap(suppliersByStatus);
@@ -51,6 +54,7 @@ adminRouter.get('/overview', async (_req, res) => {
       pendingDocuments,
       openComplaints,
       unhandledMessages,
+      paymentsToVerify,
     },
     suppliers,
     products,
@@ -428,6 +432,7 @@ adminRouter.get('/orders', async (_req, res) => {
     include: {
       retailer: { select: { businessName: true, city: true } },
       supplierOrders: { include: { supplier: { select: { businessName: true } }, commission: true, shipments: true, _count: { select: { items: true } } } },
+      payments: { select: { id: true, status: true }, orderBy: { createdAt: 'desc' }, take: 1 },
     },
   });
   res.json({ orders });

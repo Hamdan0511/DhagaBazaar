@@ -35,6 +35,15 @@ const envSchema = z.object({
   GEMINI_IMAGE_SIZE: z.enum(['1K', '2K', '4K']).default('2K'),
   /** Per-request timeout for Gemini calls. Generation is never retried automatically. */
   GEMINI_TIMEOUT_MS: z.coerce.number().int().min(10_000).max(600_000).default(180_000),
+  /** Razorpay (server-side only; never exposed except the public key id sent to Checkout). */
+  RAZORPAY_KEY_ID: z.string().trim().optional(),
+  RAZORPAY_KEY_SECRET: z.string().trim().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().trim().optional(),
+  /** Live keys (rzp_live_…) are refused unless this is explicitly true. */
+  RAZORPAY_ALLOW_LIVE: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
   /** Usage caps per supplier per day (cost protection). */
   AI_DAILY_GENERATIONS: z.coerce.number().int().min(0).default(20),
   AI_DAILY_ANALYSES: z.coerce.number().int().min(0).default(60),
@@ -104,6 +113,14 @@ export const config = {
     dailyGenerations: env.AI_DAILY_GENERATIONS,
     dailyAnalyses: env.AI_DAILY_ANALYSES,
   },
+  razorpay: (() => {
+    const keyId = env.RAZORPAY_KEY_ID && !/CHANGE_ME/i.test(env.RAZORPAY_KEY_ID) ? env.RAZORPAY_KEY_ID : null;
+    const keySecret = env.RAZORPAY_KEY_SECRET && !/CHANGE_ME/i.test(env.RAZORPAY_KEY_SECRET) ? env.RAZORPAY_KEY_SECRET : null;
+    const webhookSecret = env.RAZORPAY_WEBHOOK_SECRET && !/CHANGE_ME/i.test(env.RAZORPAY_WEBHOOK_SECRET) ? env.RAZORPAY_WEBHOOK_SECRET : null;
+    const mode = keyId?.startsWith('rzp_live_') ? ('live' as const) : keyId?.startsWith('rzp_test_') ? ('test' as const) : null;
+    const problem = !keyId || !keySecret ? null : !mode ? 'RAZORPAY_KEY_ID must start with rzp_test_ or rzp_live_.' : mode === 'live' && !env.RAZORPAY_ALLOW_LIVE ? 'Live Razorpay keys are configured but RAZORPAY_ALLOW_LIVE is not true — gateway disabled.' : null;
+    return { keyId, keySecret, webhookSecret, mode, problem, configured: !!keyId && !!keySecret && !problem };
+  })(),
   /** Fixtures can NEVER be visible in production, regardless of the flag. */
   fixturesVisible: env.NODE_ENV !== 'production' && env.ENABLE_DEV_FIXTURES,
 } as const;

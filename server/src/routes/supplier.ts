@@ -14,6 +14,7 @@ import { messageLimiter, uploadLimiter } from '../lib/rateLimits.js';
 import { releaseStock } from '../lib/stock.js';
 import { imageDimensions, productImageProblem } from '../lib/imageInfo.js';
 import { aiRouter } from './ai.js';
+import { fulfilmentBlockedReason } from '../lib/payments/service.js';
 
 export const supplierRouter = Router();
 supplierRouter.use(requireRole('SUPPLIER'));
@@ -395,7 +396,8 @@ supplierRouter.post('/enquiries/:id/respond', messageLimiter, async (req, res) =
 
 // ─── Orders & dispatch ───────────────────────────────────────────────────
 const supplierOrderInclude = {
-  order: { select: { orderNumber: true, shippingAddress: true, notes: true, createdAt: true, retailer: { select: { businessName: true, phone: true, city: true } } } },
+  // Suppliers see only the payment STATUS (never the UTR, receipt or amounts of other suppliers).
+  order: { select: { orderNumber: true, shippingAddress: true, notes: true, createdAt: true, retailer: { select: { businessName: true, phone: true, city: true } }, payments: { select: { status: true, verifiedAt: true }, orderBy: { createdAt: 'desc' as const }, take: 1 } } },
   items: true,
   shipments: { orderBy: { dispatchedAt: 'desc' as const } },
 };
@@ -426,6 +428,10 @@ supplierRouter.post('/orders/:id/status', async (req, res) => {
   const so = await prisma.supplierOrder.findFirst({ where: { id: req.params.id, supplierId: s.id }, include: { order: { include: { retailer: { select: { userId: true } } } } } });
   if (!so) throw notFound('Order not found.');
   if (!(TRANSITIONS[so.status] ?? []).includes(status)) throw unprocessable(`An order that is ${so.status.toLowerCase()} cannot be marked ${status.toLowerCase()}.`);
+  if (status === 'PROCESSING') {
+    const blocked = await fulfilmentBlockedReason(so.orderId);
+    if (blocked) throw unprocessable(blocked);
+  }
   const now = new Date();
   await prisma.$transaction(async (tx) => {
     // Conditional on the status we validated, so concurrent updates can't both apply.
@@ -457,6 +463,8 @@ supplierRouter.post('/orders/:id/dispatch', async (req, res) => {
   const so = await prisma.supplierOrder.findFirst({ where: { id: req.params.id, supplierId: s.id }, include: { order: { include: { retailer: { select: { userId: true } } } } } });
   if (!so) throw notFound('Order not found.');
   if (!['CONFIRMED', 'PROCESSING', 'DISPATCHED'].includes(so.status)) throw unprocessable('Confirm the order before adding dispatch details.');
+  const blocked = await fulfilmentBlockedReason(so.orderId);
+  if (blocked) throw unprocessable(blocked);
   await prisma.$transaction([
     prisma.shipment.create({ data: { supplierOrderId: so.id, carrier: data.carrier, trackingNumber: data.trackingNumber, trackingUrl: data.trackingUrl || null, notes: data.notes || null } }),
     prisma.supplierOrder.update({ where: { id: so.id }, data: { status: 'DISPATCHED', dispatchedAt: new Date() } }),

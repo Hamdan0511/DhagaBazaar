@@ -11,9 +11,12 @@ import { badRequest, conflict, notFound, unprocessable } from '../lib/http.js';
 import { audit, notify } from '../lib/audit.js';
 import { messageLimiter } from '../lib/rateLimits.js';
 import { releaseStock, reserveStock } from '../lib/stock.js';
+import { createOrderPayment, gatewayReady, getPaymentSettings, manualUpiReady, retailerPaymentView, syncOpenPayment } from '../lib/payments/service.js';
+import { retailerPaymentsRouter } from './retailerPayments.js';
 
 export const retailerRouter = Router();
 retailerRouter.use(requireRole('RETAILER'));
+retailerRouter.use(retailerPaymentsRouter);
 
 const retailerId = (req: Express.Request) => {
   if (!req.user?.retailerId) throw badRequest('Retailer profile missing.');
@@ -96,8 +99,35 @@ function orderNumber() {
 }
 
 retailerRouter.post('/orders', async (req, res) => {
-  const { addressId, notes } = parse(z.object({ addressId: z.string().min(1, 'Choose a delivery address'), notes: z.string().trim().max(1000).optional() }), req.body);
+  const { addressId, notes, paymentMethod, idempotencyKey } = parse(
+    z.object({
+      addressId: z.string().min(1, 'Choose a delivery address'),
+      notes: z.string().trim().max(1000).optional(),
+      paymentMethod: z.enum(['UPI_QR', 'RAZORPAY']).optional(),
+      /** Client-generated per checkout attempt; a retried request with the same key returns the same order. */
+      idempotencyKey: z.string().regex(/^[A-Za-z0-9-]{16,64}$/, 'Invalid checkout key').optional(),
+    }),
+    req.body,
+  );
   const rid = retailerId(req);
+  const replay = async () => {
+    if (!idempotencyKey) return null;
+    const prior = await prisma.payment.findUnique({ where: { idempotencyKey }, select: { id: true, status: true, order: { select: { id: true, orderNumber: true, retailerId: true } } } });
+    if (!prior) return null;
+    if (prior.order.retailerId !== rid) throw conflict('This checkout key cannot be used.');
+    return { order: { id: prior.order.id, orderNumber: prior.order.orderNumber }, payment: { id: prior.id, status: prior.status }, replayed: true };
+  };
+  const previous = await replay();
+  if (previous) return res.status(200).json(previous);
+
+  // Online payment is offered only when an admin has enabled it and uploaded the business QR.
+  const settings = await getPaymentSettings();
+  const upiReady = manualUpiReady(settings);
+  const onlineReady = gatewayReady(settings);
+  if (paymentMethod === 'UPI_QR' && !upiReady) throw unprocessable('UPI payment is not available right now. Please contact Dhaaga Bazaar support.');
+  if (paymentMethod === 'RAZORPAY' && !onlineReady) throw unprocessable('Online payment is not available right now. Please choose another payment method.');
+  const withPayment = upiReady || onlineReady;
+  const method: 'UPI_QR' | 'RAZORPAY' = paymentMethod ?? (onlineReady ? 'RAZORPAY' : 'UPI_QR');
   const address = await prisma.address.findFirst({ where: { id: addressId, retailerId: rid } });
   if (!address) throw unprocessable('Choose a delivery address.');
   const cart = await buildCart(req.user!.id);
@@ -111,6 +141,7 @@ retailerRouter.post('/orders', async (req, res) => {
   // submission blocks on these row locks, then finds them gone and is rejected, so
   // one cart can never become two orders.
   const lineIds = cart.suppliers.flatMap((g) => g.lines.map((l) => l.id));
+  let payment: { id: string; status: string } | null = null;
   const order = await prisma.$transaction(async (tx) => {
     const claimed = await tx.cartItem.deleteMany({ where: { cartId: cart.cartId, id: { in: lineIds } } });
     if (claimed.count !== lineIds.length) throw conflict('Your cart changed while this order was being submitted. Please review your cart and try again.');
@@ -150,15 +181,23 @@ retailerRouter.post('/orders', async (req, res) => {
       },
       include: { supplierOrders: { include: { supplier: { select: { userId: true } } } } },
     });
+    // Same transaction: an order placed while payments are enabled always has exactly one payment.
+    if (withPayment) payment = await createOrderPayment(tx, created, idempotencyKey, req.user!.id, method);
     return created;
+  }).catch(async (e) => {
+    // A concurrent retry with the same key lost the race: hand back the order the first one created.
+    const prior = await replay().catch(() => null);
+    if (prior) return prior;
+    throw e;
   });
+  if ('replayed' in order) return res.status(200).json(order);
 
   for (const so of order.supplierOrders) {
     await notify(so.supplier.userId, 'ORDER_REQUEST', 'New bulk order request', `Order ${order.orderNumber} is awaiting your confirmation.`, `/supplier/orders/${so.id}`);
   }
   await notify(req.user!.id, 'ORDER_SUBMITTED', 'Bulk order request submitted', `Order ${order.orderNumber} was sent to ${order.supplierOrders.length} supplier(s).`, `/account/orders/${order.id}`);
-  await audit(req.user!.id, 'order.created', 'Order', order.id, { supplierGroups: order.supplierOrders.length });
-  res.status(201).json({ order: { id: order.id, orderNumber: order.orderNumber } });
+  await audit(req.user!.id, 'order.created', 'Order', order.id, { supplierGroups: order.supplierOrders.length, payment: withPayment ? method : 'none' });
+  res.status(201).json({ order: { id: order.id, orderNumber: order.orderNumber }, payment });
 });
 
 const orderInclude = {
@@ -170,17 +209,20 @@ const orderInclude = {
     },
   },
   complaints: { select: { id: true, subject: true, status: true, createdAt: true } },
+  payments: { orderBy: { createdAt: 'desc' as const }, take: 1, include: { events: { orderBy: { createdAt: 'asc' as const } } } },
 };
+
+const orderView = <T extends { payments: Parameters<typeof retailerPaymentView>[0][] }>({ payments, ...o }: T) => ({ ...o, payment: payments[0] ? retailerPaymentView(payments[0]) : null });
 
 retailerRouter.get('/orders', async (req, res) => {
   const orders = await prisma.order.findMany({ where: { retailerId: retailerId(req) }, orderBy: { createdAt: 'desc' }, include: orderInclude });
-  res.json({ orders });
+  res.json({ orders: orders.map(orderView) });
 });
 
 retailerRouter.get('/orders/:id', async (req, res) => {
   const order = await prisma.order.findFirst({ where: { id: req.params.id, retailerId: retailerId(req) }, include: orderInclude });
   if (!order) throw notFound('Order not found.');
-  res.json({ order });
+  res.json({ order: orderView(order) });
 });
 
 retailerRouter.post('/orders/:orderId/supplier-orders/:id/cancel', async (req, res) => {
@@ -214,6 +256,8 @@ export async function recomputeOrderStatus(orderId: string) {
   else if (active.some((x) => x === 'CONFIRMED')) status = 'PARTIALLY_CONFIRMED';
   else status = 'REQUESTED';
   await prisma.order.update({ where: { id: orderId }, data: { status } });
+  // An unpaid payment follows the order: rejected/cancelled groups lower the amount due.
+  await syncOpenPayment(orderId);
 }
 
 // ─── Saved products & suppliers (wishlist) ───────────────────────────────

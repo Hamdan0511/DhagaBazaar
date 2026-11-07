@@ -38,6 +38,7 @@ import { AccountSettings } from '@/components/dashboard/AccountSettings';
 import { useAuth } from '@/hooks/useAuth';
 import { cn, formatDate, titleCase } from '@/lib/utils';
 import { toast } from '@/stores/ui';
+import PaymentPage, { PaymentBadge } from './PaymentPage';
 
 // ─── Overview ────────────────────────────────────────────────────────────
 function Overview() {
@@ -169,6 +170,14 @@ function OrderDetail() {
           <div>Prices as recorded at submission. Final invoice, taxes and shipping are issued by each supplier.</div>
         </div>
       </div>
+      {o.payment && ['PENDING', 'REJECTED', 'FAILED'].includes(o.payment.status) && (
+        <Alert tone="warning" className="mb-5 print:hidden" title={o.payment.status === 'REJECTED' ? 'Your payment could not be verified' : o.payment.status === 'FAILED' ? 'Your payment did not go through' : `Payment due: ${formatINR(o.payment.amountPaise)}`}>
+          {o.payment.status === 'REJECTED' ? o.payment.rejectionReason : o.payment.status === 'FAILED' ? `${o.payment.failureReason ?? ''} No money is taken for a failed payment.` : 'Suppliers start preparing your order once your payment is confirmed.'}{' '}
+          <Link to={`/account/orders/${o.id}/pay`} className="font-semibold underline">
+            {o.payment.status === 'REJECTED' ? 'Resubmit payment details' : o.payment.status === 'FAILED' ? 'Try again' : 'Pay now'}
+          </Link>
+        </Alert>
+      )}
       {params.get('placed') && (
         <Alert tone="success" className="mb-5" title="Your bulk order request has been submitted">
           Each supplier below has been notified and will confirm their part of the order. You&apos;ll get a notification as they respond.
@@ -254,6 +263,24 @@ function OrderDetail() {
           })}
         </div>
         <aside className="space-y-4">
+          {o.payment && (
+            <Panel title="Payment">
+              <div className="space-y-2 text-sm">
+                <PaymentBadge payment={o.payment} />
+                <p>
+                  <span className="text-muted">Amount: </span>
+                  <span className="font-semibold">{formatINR(o.payment.amountPaise)}</span>
+                  {o.payment.refundedPaise > 0 && <span className="text-muted"> · {formatINR(o.payment.refundedPaise)} refunded</span>}
+                </p>
+                <p className="text-xs text-muted">
+                  {o.payment.provider === 'RAZORPAY' ? `Razorpay${o.payment.gatewayMethod ? ` · ${o.payment.gatewayMethod.toUpperCase()}` : ''}` : 'UPI QR'} · {o.payment.internalReference}
+                </p>
+                <Link to={`/account/orders/${o.id}/pay`} className="inline-block text-sm font-medium text-copper-600 hover:underline print:hidden">
+                  {['PENDING', 'REJECTED', 'FAILED'].includes(o.payment.status) ? 'Pay now →' : 'Payment details →'}
+                </Link>
+              </div>
+            </Panel>
+          )}
           <Panel title="Delivery address">
             <p className="text-sm leading-relaxed">
               <span className="font-medium">{a.label}</span>
@@ -633,6 +660,7 @@ export default function AccountRoutes() {
         <Route index element={<Overview />} />
         <Route path="orders" element={<Orders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
+        <Route path="orders/:id/pay" element={<PaymentPage />} />
         <Route path="shipments" element={<Shipments />} />
         <Route path="enquiries" element={<Enquiries />} />
         <Route path="saved" element={<Saved tab="products" />} />

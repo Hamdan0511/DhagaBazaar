@@ -69,3 +69,13 @@ export const aiLimiter = rateLimit({
   legacyHeaders: false,
   message: tooMany('Too many AI requests in a short time. Please wait a few minutes and try again.'),
 });
+
+/** Payment detail submissions per user (UTR + receipt). */
+export const paymentLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: isTest ? 1000 : 15,
+  keyGenerator: userOrIp,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: tooMany('Too many payment submissions. Please wait and try again, or contact support.'),
+});

@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Boxes, Camera, Settings, Bell, Building2, ClipboardList, FileUp, LayoutDashboard, MessagesSquare, Package, Plus, ShieldCheck, Sparkles, Trash2, Truck, X } from 'lucide-react';
-import { SUPPLIER_DOCUMENT_TYPES, SUPPLIER_STATUS_LABELS, dispatchSchema, formatINR, formatNumber, PRICE_UNIT_SHORT } from '@dhaaga/shared';
+import { PAYMENT_STATUS_LABELS, SUPPLIER_DOCUMENT_TYPES, SUPPLIER_STATUS_LABELS, dispatchSchema, formatINR, formatNumber, PRICE_UNIT_SHORT } from '@dhaaga/shared';
 import { api, errorMessage } from '@/lib/api';
 import { DashboardLayout, NotificationsView, PageHeader, Panel, StatCard, useUnreadCount, type NavItem } from '@/components/dashboard/DashboardLayout';
 import { Alert, EmptyState, ErrorState, PageLoader, SmartImage, StatusBadge } from '@/components/ui/Feedback';
@@ -528,7 +528,7 @@ interface SupplierOrderRow {
   subtotalPaise: number;
   supplierNote: string | null;
   createdAt: string;
-  order: { orderNumber: string; notes: string | null; createdAt: string; shippingAddress: Record<string, string>; retailer: { businessName: string; phone: string; city: string } };
+  order: { orderNumber: string; notes: string | null; createdAt: string; shippingAddress: Record<string, string>; retailer: { businessName: string; phone: string; city: string }; payments?: { status: string; verifiedAt: string | null }[] };
   items: { id: string; productTitle: string; variantLabel: string | null; quantity: number; unitPricePaise: number; priceUnit: string; lineTotalPaise: number }[];
   shipments: { id: string; carrier: string; trackingNumber: string; status: string; dispatchedAt: string }[];
 }
@@ -590,6 +590,20 @@ function OrderDetail() {
   return (
     <>
       <PageHeader title={`Order ${o.order.orderNumber}`} description={<>From {o.order.retailer.businessName} · {formatDate(o.createdAt)} · <StatusBadge status={o.status} /></>} />
+      {(() => {
+        const pay = o.order.payments?.[0];
+        if (!pay) return null;
+        const verified = pay.status === 'PAID' || pay.status === 'PARTIALLY_REFUNDED';
+        return verified ? (
+          <Alert tone="success" className="mb-5" title="Payment verified by Dhaaga Bazaar">
+            The retailer&apos;s payment was verified{pay.verifiedAt ? ` on ${formatDate(pay.verifiedAt)}` : ''}. You may process and dispatch this order once you have confirmed it.
+          </Alert>
+        ) : (
+          <Alert tone="warning" className="mb-5" title={`Payment: ${PAYMENT_STATUS_LABELS[pay.status] ?? pay.status}`}>
+            You can confirm or reject this order now. Start processing or dispatch only after Dhaaga Bazaar has verified the retailer&apos;s payment — you&apos;ll be notified.
+          </Alert>
+        );
+      })()}
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
           <Panel title="Items">

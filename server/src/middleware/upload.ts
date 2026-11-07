@@ -26,3 +26,22 @@ export function acceptFiles(field: string, allowed: string[], maxCount = 1): Req
   };
   return [memory.array(field, maxCount), verify];
 }
+
+/**
+ * Optional single file (e.g. a payment receipt): no file is fine, but a file that is present must
+ * match one of the allowed signatures and be within maxBytes.
+ */
+export function optionalFile(field: string, allowed: string[], maxBytes: number): RequestHandler[] {
+  const verify: RequestHandler = (req, _res, next) => {
+    const f = req.file;
+    if (!f) return next();
+    if (f.size > maxBytes) return next(badRequest(`"${f.originalname}" is larger than ${Math.round(maxBytes / 1048576)} MB.`));
+    const mime = sniffMime(f.buffer);
+    if (!mime || !allowed.includes(mime)) {
+      return next(badRequest(`"${f.originalname}" is not a supported file. Allowed: ${allowed.map((m) => m.split('/')[1].toUpperCase()).join(', ')}.`));
+    }
+    f.mimetype = mime;
+    next();
+  };
+  return [memory.single(field), verify];
+}

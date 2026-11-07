@@ -25,6 +25,8 @@ import {
   LifeBuoy,
   Inbox,
   type LucideIcon,
+  QrCode,
+  Wallet,
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -45,6 +47,7 @@ export interface AdminCounts {
   infoRequestedSuppliers: number;
   pendingProducts: number;
   pendingDocuments: number;
+  paymentsToVerify: number;
 }
 
 /** Live queue sizes for the sidebar badges (same numbers as the overview). */
@@ -123,6 +126,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             { to: '/admin/products/unpublished', label: 'Unpublished Products', icon: PackageX },
             { to: '/admin/categories', label: 'Categories', icon: FolderTree },
             { to: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+            { to: '/admin/payments', label: 'Payments', icon: Wallet, badge: counts?.paymentsToVerify },
             { to: '/admin/commissions', label: 'Commissions', icon: BadgeIndianRupee },
             { to: '/admin/complaints', label: 'Complaints', icon: LifeBuoy },
             { to: '/admin/messages', label: 'Contact Messages', icon: Inbox },
@@ -134,7 +138,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           items={[
             { to: '/admin/notifications', label: 'Notifications', icon: Bell, badge: unread.data },
             { to: '/admin/audit', label: 'Audit Logs', icon: History },
-            { to: '/admin/settings', label: 'Settings', icon: Settings },
+            { to: '/admin/settings/payments', label: 'Settings · Payments', icon: QrCode },
+            { to: '/admin/settings', label: 'Settings', icon: Settings, end: true },
           ]}
         />
       </nav>

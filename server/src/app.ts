@@ -17,6 +17,7 @@ import { retailerRouter } from './routes/retailer.js';
 import { supplierRouter } from './routes/supplier.js';
 import { adminRouter } from './routes/admin.js';
 import { notificationsRouter } from './routes/notifications.js';
+import { webhookRouter } from './routes/webhooks.js';
 import { prisma } from './lib/prisma.js';
 
 export function createApp() {
@@ -26,7 +27,20 @@ export function createApp() {
   app.set('trust proxy', config.trustProxy || false);
   app.use(requestLogger);
 
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'same-site' } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'same-site' },
+      // Allows Razorpay Standard Checkout (script, iframe, telemetry) when this server also serves the SPA.
+      contentSecurityPolicy: {
+        directives: {
+          'script-src': ["'self'", 'https://checkout.razorpay.com'],
+          'frame-src': ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
+          'connect-src': ["'self'", 'https://api.razorpay.com', 'https://lumberjack.razorpay.com'],
+          'img-src': ["'self'", 'data:', 'blob:', 'https://*.razorpay.com'],
+        },
+      },
+    }),
+  );
   app.use(
     cors({
       origin: (origin, cb) => cb(null, !origin || config.clientOrigins.includes(origin)),
@@ -35,6 +49,8 @@ export function createApp() {
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     }),
   );
+  // Payment webhooks need the raw body for signature verification, so they are mounted before the JSON parser.
+  app.use('/api/webhooks', webhookRouter);
   app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
 

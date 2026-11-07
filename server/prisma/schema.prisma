@@ -99,11 +99,19 @@ enum SupplierOrderStatus {
   CANCELLED
 }
 
+/// PENDING: awaiting the retailer's payment · SUBMITTED: retailer sent a UTR, awaiting admin
+/// verification · PAID: verified by an admin (or a verified gateway) · REJECTED: admin could not
+/// verify the submission (retailer may resubmit) · FAILED: gateway failure · PARTIALLY_REFUNDED /
+/// REFUNDED: refunds recorded · CANCELLED: order cancelled before payment.
 enum PaymentStatus {
   PENDING
   PAID
   FAILED
   REFUNDED
+  SUBMITTED
+  REJECTED
+  PARTIALLY_REFUNDED
+  CANCELLED
 }
 
 enum ShipmentStatus {
@@ -509,20 +517,112 @@ model OrderItem {
   @@map("order_items")
 }
 
+/// One payment per retailer order (the whole order is paid in one transaction). supplierOrderId is
+/// reserved for a future per-supplier (split) model and is not used by the manual UPI flow.
 model Payment {
-  id              String         @id @default(cuid())
-  orderId         String
-  supplierOrderId String?
-  amountPaise     Int
-  method          String
-  status          PaymentStatus  @default(PENDING)
-  reference       String?
-  paidAt          DateTime?
-  createdAt       DateTime       @default(now())
-  order           Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  supplierOrder   SupplierOrder? @relation(fields: [supplierOrderId], references: [id])
+  id                String                @id @default(cuid())
+  orderId           String
+  supplierOrderId   String?
+  /// Authoritative amount due, in paise, always computed on the server.
+  amountPaise       Int
+  /// UPI_QR (manual) or a gateway method in future.
+  method            String
+  status            PaymentStatus         @default(PENDING)
+  /// Customer-provided transaction reference (UPI UTR / bank reference). Unverified until an admin verifies.
+  reference         String?
+  paidAt            DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @default(now()) @updatedAt
+  /// Internal reference shown to the retailer and admin (e.g. DBP-…).
+  internalReference String?               @unique
+  /// MANUAL_UPI today; RAZORPAY / CASHFREE when a gateway adapter is configured.
+  provider          String                @default("MANUAL_UPI")
+  providerPaymentId String?
+  /// Checkout idempotency key: a repeated checkout request returns the same order and payment.
+  idempotencyKey    String?               @unique
+  receiptKey        String?
+  receiptMime       String?
+  submittedAt       DateTime?
+  verifiedAt        DateTime?
+  verifiedById      String?
+  rejectionReason   String?
+  refundedPaise     Int                   @default(0)
+  submissionCount   Int                   @default(0)
+  /// Gateway payment method reported by the provider (upi, card, netbanking, wallet…).
+  gatewayMethod     String?
+  /// Last gateway failure description (from the provider; shown to admins).
+  failureReason     String?
+  order             Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  supplierOrder     SupplierOrder?        @relation(fields: [supplierOrderId], references: [id])
+  events            PaymentEvent[]
+  refunds           PaymentRefund[]
+  gatewayOrders     PaymentGatewayOrder[]
 
+  @@unique([provider, providerPaymentId])
+  @@index([orderId])
+  @@index([status, createdAt])
+  @@index([reference])
   @@map("payments")
+}
+
+/// Append-only history of every payment state change (who, when, why).
+model PaymentEvent {
+  id         String         @id @default(cuid())
+  paymentId  String
+  type       String
+  fromStatus PaymentStatus?
+  toStatus   PaymentStatus?
+  actorId    String?
+  note       String?
+  /// Customer reference at the time of the event (admin view only).
+  reference  String?
+  createdAt  DateTime       @default(now())
+  payment    Payment        @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, createdAt])
+  @@map("payment_events")
+}
+
+/// A refund made outside the platform (UPI/bank transfer) and recorded by an admin.
+model PaymentRefund {
+  id               String   @id @default(cuid())
+  paymentId        String
+  supplierOrderId  String?
+  amountPaise      Int
+  reference        String?
+  note             String
+  recordedById     String
+  /// Gateway refund id (e.g. rfnd_…) when the refund was issued through the gateway.
+  providerRefundId String?  @unique
+  /// PROCESSED for manual refunds; PENDING → PROCESSED / FAILED for gateway refunds.
+  status           String   @default("PROCESSED")
+  createdAt        DateTime @default(now())
+  payment          Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_refunds")
+}
+
+/// Business payment configuration (single row, id = "default"). Only admins can read or change it;
+/// retailers see the QR/UPI details only for their own unpaid order.
+model PaymentSettings {
+  id               String   @id @default("default")
+  manualUpiEnabled Boolean  @default(false)
+  /// Must stay false until a gateway adapter and merchant credentials are configured.
+  gatewayEnabled   Boolean  @default(false)
+  qrStorageKey     String?
+  qrMime           String?
+  upiId            String?
+  beneficiaryName  String?
+  instructions     String?
+  supportPhone     String?
+  supportEmail     String?
+  paymentTerms     String?
+  refundPolicy     String?
+  updatedById      String?
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  @@map("payment_settings")
 }
 
 model Shipment {
@@ -766,4 +866,41 @@ model AiGeneration {
   @@index([supplierId, status])
   @@index([sourceId])
   @@map("ai_generations")
+}
+
+/// One gateway order (e.g. Razorpay order_…) per payment attempt. Webhooks and checkout
+/// callbacks are matched to the Payment through this table, never through client data.
+model PaymentGatewayOrder {
+  id              String   @id @default(cuid())
+  paymentId       String
+  provider        String
+  providerOrderId String   @unique
+  amountPaise     Int
+  currency        String   @default("INR")
+  /// created / attempted / paid as last seen from the provider.
+  status          String   @default("created")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId, createdAt])
+  @@map("payment_gateway_orders")
+}
+
+/// Every webhook delivery received (idempotency by the provider's event id).
+model PaymentWebhookEvent {
+  id         String   @id @default(cuid())
+  provider   String
+  /// x-razorpay-event-id — unique per event; repeated deliveries are ignored.
+  eventId    String
+  eventType  String
+  paymentId  String?
+  /// PROCESSED or IGNORED. Failed processing is not stored, so the provider's retry is handled.
+  status     String
+  note       String?
+  receivedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([paymentId])
+  @@map("payment_webhook_events")
 }

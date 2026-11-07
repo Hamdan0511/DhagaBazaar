@@ -32,6 +32,9 @@ async function main() {
     select: { id: true, orderNumber: true, supplierOrders: { select: { id: true } } },
   });
   const orderIds = orders.map((o) => o.id);
+  // Payment receipts are private files; the payment rows go with their orders.
+  const receipts = (await prisma.payment.findMany({ where: { orderId: { in: orderIds }, receiptKey: { not: null } }, select: { receiptKey: true } })).map((p) => p.receiptKey!);
+  files.push(...receipts);
 
   // Notifications the test records caused for OTHER accounts (e.g. admin "application to review",
   // fixture suppliers' "new order request"), and audit entries about the test records.

@@ -43,6 +43,8 @@ Key decisions:
 
 **Fulfilment.** Suppliers confirm/decline, mark processing, add dispatch details (creates a shipment, notifies the retailer) and mark delivered. Admins monitor every group and record commissions.
 
+- **Payment:** checkout (payments enabled) → `Payment` PENDING in the order transaction → retailer submits UTR → SUBMITTED → admin verifies (PAID) or rejects (REJECTED, resubmit). Supplier processing/dispatch requires a verified payment. Details and state machine: [PAYMENTS.md](PAYMENTS.md).
+
 ## Security
 
 - Passwords: bcrypt (cost 12). Sessions: signed JWT in an HTTP-only, SameSite=Lax cookie (Secure in production), invalidated via `tokenVersion` on password change/reset/deactivation.

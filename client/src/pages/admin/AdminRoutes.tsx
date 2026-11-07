@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PaymentDetail, PaymentSettingsPage, PaymentsList } from './AdminPayments';
 import { Link, Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -136,6 +137,7 @@ function Overview() {
         <Panel title="Other queues">
           <ul className="space-y-3 text-sm">
             {[
+              ['Payments awaiting verification', s.paymentsToVerify, '/admin/payments?status=SUBMITTED', FileCheck2],
               ['Verification documents awaiting review', s.pendingDocuments, '/admin/documents', FileCheck2],
               ['Applications awaiting supplier updates', s.infoRequestedSuppliers, '/admin/applications?status=INFO_REQUESTED', ClipboardCheck],
               ['Suppliers with verified documents', s.verifiedSuppliers, '/admin/suppliers/approved', UserCheck],
@@ -775,6 +777,9 @@ export default function AdminRoutes() {
         <Route path="notifications" element={<NotificationsView />} />
         <Route path="audit" element={<AuditLog />} />
         <Route path="settings" element={<AccountSettings />} />
+        <Route path="settings/payments" element={<PaymentSettingsPage />} />
+        <Route path="payments" element={<PaymentsList />} />
+        <Route path="payments/:id" element={<PaymentDetail />} />
         <Route path="*" element={<EmptyState title="Page not found" actions={<Link to="/admin" className="link">Back to overview</Link>} />} />
       </Routes>
     </AdminLayout>

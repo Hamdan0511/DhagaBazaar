@@ -181,6 +181,8 @@ export interface Order {
   shippingAddress: Omit<Address, 'id' | 'isDefault'>;
   supplierOrders: SupplierOrder[];
   complaints: { id: string; subject: string; status: string; createdAt: string }[];
+  /** Present when the order was placed with online payment. */
+  payment: import('./payments').RetailerPayment | null;
 }
 
 export interface Notification {
