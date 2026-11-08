@@ -1,0 +1,12 @@
+{
+  // Production build type check (`npm run build`): application code only.
+  // Test files are type-checked by `npm run typecheck` (tsconfig.json) and run by Vitest;
+  // they are excluded here so test-only types (Vitest globals, jest-dom) never leak into
+  // application code and test files can't break a deployment build.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client"]
+  },
+  "include": ["src", "../shared/src"],
+  "exclude": ["src/test", "src/**/*.test.ts", "src/**/*.test.tsx"]
+}
